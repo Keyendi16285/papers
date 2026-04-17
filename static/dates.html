@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upcoming Dates | massfoia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-[#f8fafc] text-slate-900 flex min-h-screen">
+
+    <aside class="w-64 bg-slate-900 text-slate-300 flex-shrink-0 flex flex-col border-r border-slate-800">
+        <div class="p-6">
+            <h1 class="text-white font-black text-xl tracking-tighter">PAPERS<span class="text-blue-500">.</span></h1>
+        </div>
+        <nav class="flex-grow space-y-1 px-3">
+            <a href="/"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-sm hover:bg-slate-800 transition-all">
+                <i class="fa-solid fa-gauge-high w-5"></i> Dashboard
+            </a>
+            <a href="/dates"
+                class="bg-blue-600/10 border-r-4 border-blue-500 text-blue-500 flex items-center gap-3 px-4 py-3 rounded-lg font-semibold text-sm transition-all">
+                <i class="fa-solid fa-calendar-days w-5"></i> Upcoming Dates
+            </a>
+        </nav>
+    </aside>
+
+    <main class="flex-grow flex flex-col">
+        <header class="bg-white border-b border-slate-200 p-4 flex justify-between items-center sticky top-0 z-30">
+            <h2 class="text-sm font-black uppercase tracking-widest text-slate-400">Master Deadline Calendar</h2>
+        </header>
+
+        <div class="p-8 max-w-7xl mx-auto w-full">
+            <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 bg-white flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-extrabold text-slate-800">Deadlines & Hearings</h2>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Sorted by nearest date
+                            first</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <div
+                            class="flex items-center gap-2 px-3 py-1 bg-red-50 border border-red-100 rounded-lg text-[10px] font-bold text-red-600">
+                            <span class="w-2 h-2 bg-red-500 rounded-full"></span> Plaintiff
+                        </div>
+                        <div
+                            class="flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-100 rounded-lg text-[10px] font-bold text-blue-600">
+                            <span class="w-2 h-2 bg-blue-500 rounded-full"></span> Defendant
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr
+                                class="text-slate-400 uppercase text-[9px] font-black tracking-[0.15em] border-b border-slate-100">
+                                <th class="px-6 py-4">Status</th>
+                                <th class="px-6 py-4">Due Date</th>
+                                <th class="px-6 py-4">Party</th>
+                                <th class="px-6 py-4">Filing / Context</th>
+                                <th class="px-6 py-4">Description</th>
+                                <th class="px-6 py-4 text-right">Edit</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dates-table-body" class="divide-y divide-slate-50">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <div id="edit-modal"
+        class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="font-black text-slate-800 uppercase tracking-tight">Edit Deadline</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><i
+                        class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="edit-date-form" class="p-6 space-y-4">
+                <input type="hidden" id="edit-id">
+                <div>
+                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Deadline Date/Time</label>
+                    <input type="datetime-local" id="edit-date"
+                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Responsible Party</label>
+                    <select id="edit-party"
+                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="P">Plaintiff (P)</option>
+                        <option value="D">Defendant (D)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Event Description</label>
+                    <input type="text" id="edit-text"
+                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="pt-4">
+                    <button type="submit"
+                        class="w-full bg-slate-900 hover:bg-blue-600 text-white font-bold py-3 rounded-xl transition-all">
+                        Update Deadline
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/js/dates.js"></script>
+</body>
+
+</html>

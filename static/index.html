@@ -1,0 +1,416 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Papers | massfoia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .sidebar-active {
+            background: rgba(59, 130, 246, 0.1);
+            border-right: 4px solid #3b82f6;
+            color: #3b82f6;
+        }
+    </style>
+</head>
+
+<body class="bg-[#f8fafc] text-slate-900 flex min-h-screen">
+
+    <aside class="w-64 bg-slate-900 text-slate-300 flex-shrink-0 flex flex-col border-r border-slate-800">
+        <div class="p-6">
+            <h1 class="text-white font-black text-xl tracking-tighter">PAPERS<span class="text-blue-500">.</span></h1>
+            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Legal Docket System</p>
+        </div>
+
+        <nav class="flex-grow space-y-1 px-3">
+            <a href="/"
+                class="sidebar-active flex items-center gap-3 px-4 py-3 rounded-lg font-semibold text-sm transition-all">
+                <i class="fa-solid fa-gauge-high w-5"></i> Dashboard
+            </a>
+            <a href="/dates"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-sm hover:bg-slate-800 hover:text-white transition-all">
+                <i class="fa-solid fa-calendar-days w-5"></i> Upcoming Dates
+            </a>
+        </nav>
+
+        <div class="p-6 border-t border-slate-800">
+            <div class="flex items-center gap-3 text-sm font-medium text-slate-400">
+                <div
+                    class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
+                    CT</div>
+                <span>Case Admin</span>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-grow flex flex-col">
+
+        <header class="bg-white border-b border-slate-200 p-4 flex justify-between items-center sticky top-0 z-30">
+            <div class="flex items-center gap-4">
+                <div class="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                    Internal App
+                </div>
+            </div>
+            <div id="connection-status" class="flex items-center gap-2 text-[10px] font-bold text-green-500 uppercase">
+                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> DB Connected
+            </div>
+        </header>
+
+        <div class="p-8 max-w-7xl mx-auto w-full space-y-8">
+
+            <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <h2 class="text-sm font-extrabold text-slate-800 uppercase tracking-tight">Create New Filing</h2>
+                    <i class="fa-solid fa-plus text-slate-400"></i>
+                </div>
+
+                <form id="paper-form" class="p-6 space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="relative">
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Target
+                                Defendant</label>
+                            <div class="relative">
+                                <i
+                                    class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                <input type="text" id="target-search" placeholder="Type name or case #"
+                                    class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                            </div>
+                            <div id="search-results"
+                                class="absolute z-40 w-full bg-white border border-slate-200 shadow-2xl rounded-xl hidden mt-2 max-h-60 overflow-y-auto">
+                            </div>
+                            <input type="hidden" id="selected-case-id">
+                            <input type="hidden" id="selected-def-id">
+                            <input type="hidden" id="selected-case-name">
+                            <input type="hidden" id="selected-def-name">
+                        </div>
+
+                        <div>
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Paper
+                                Category</label>
+                            <select id="paper-type"
+                                class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                                <option value="Pleading">Pleading</option>
+                                <option value="Motion">Motion</option>
+                                <option value="MSJ">MSJ</option>
+                                <option value="Courtesy Copies">Courtesy Copies</option>
+                                <option value="Fee Petition">Fee Petition</option>
+                                <option value="Discovery Req">Discovery Req</option>
+                                <option value="Discovery Resp">Discovery Resp</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Internal
+                                Memo / Notes</label>
+                            <input type="text" id="paper-desc" placeholder="Brief context..."
+                                class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Associated
+                                Deadlines</h3>
+                            <button type="button" onclick="addDateRow()"
+                                class="text-xs font-bold text-blue-600 hover:text-blue-700">
+                                <i class="fa-solid fa-circle-plus"></i> Add Date
+                            </button>
+                        </div>
+                        <div id="date-rows-container" class="space-y-2">
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit"
+                            class="bg-slate-900 hover:bg-blue-600 text-white font-bold py-2.5 px-10 rounded-xl shadow-lg shadow-blue-900/10 transition-all transform hover:-translate-y-0.5">
+                            Save Filing & Dates
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 bg-white flex justify-between items-center">
+                    <div>
+                        <h2 class="text-sm font-extrabold text-slate-800 uppercase tracking-tight">Active Docket</h2>
+                        <p class="text-[10px] text-slate-400 font-bold">Showing papers with upcoming dates</p>
+                    </div>
+                    <div class="flex gap-1 p-1 bg-slate-100 rounded-xl">
+                        <button
+                            class="px-4 py-1.5 text-[10px] font-bold rounded-lg hover:bg-white transition-all">PAST</button>
+                        <button
+                            class="px-4 py-1.5 text-[10px] font-bold bg-white rounded-lg shadow-sm text-blue-600">UPCOMING</button>
+                        <button
+                            class="px-4 py-1.5 text-[10px] font-bold rounded-lg hover:bg-white transition-all">ALL</button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50/50 border-b border-slate-100">
+                                <th class="col-type p-4 text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                                    Filing Type</th>
+                                <th
+                                    class="col-target p-4 text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                                    Linked Case/Defendant</th>
+                                <th
+                                    class="col-event p-4 text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                                    Nearest Event</th>
+                                <th
+                                    class="col-count p-4 text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                                    Deadline</th>
+                                <th
+                                    class="col-action p-4 text-[11px] font-bold uppercase tracking-widest text-slate-400 text-right">
+                                    Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="active-docket-body" class="divide-y divide-slate-50">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="/static/js/main.js"></script>
+</body>
+
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Papers | massfoia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .sidebar-active {
+            background: rgba(59, 130, 246, 0.1);
+            border-right: 4px solid #3b82f6;
+            color: #3b82f6;
+        }
+
+        /* CRITICAL ALIGNMENT FIXES */
+        #active-docket-table {
+            table-layout: fixed !important;
+            width: 100% !important;
+            border-collapse: collapse;
+        }
+
+        /* Force headers and body to align */
+        .col-type {
+            width: 22% !important;
+        }
+
+        .col-target {
+            width: 33% !important;
+        }
+
+        .col-event {
+            width: 20% !important;
+        }
+
+        .col-count {
+            width: 15% !important;
+        }
+
+        .col-action {
+            width: 10% !important;
+            text-align: right;
+        }
+
+        #active-docket-table th,
+        #active-docket-table td {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            padding: 1rem;
+        }
+    </style>
+</head>
+
+<body class="bg-[#f8fafc] text-slate-900 flex min-h-screen">
+
+    <aside class="w-64 bg-slate-900 text-slate-300 flex-shrink-0 flex flex-col border-r border-slate-800">
+        <div class="p-6">
+            <h1 class="text-white font-black text-xl tracking-tighter">PAPERS<span class="text-blue-500">.</span></h1>
+            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Legal Docket System</p>
+        </div>
+
+        <nav class="flex-grow space-y-1 px-3">
+            <a href="/"
+                class="sidebar-active flex items-center gap-3 px-4 py-3 rounded-lg font-semibold text-sm transition-all">
+                <i class="fa-solid fa-gauge-high w-5"></i> Dashboard
+            </a>
+            <a href="/dates"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-sm hover:bg-slate-800 hover:text-white transition-all">
+                <i class="fa-solid fa-calendar-days w-5"></i> Upcoming Dates
+            </a>
+        </nav>
+
+        <div class="p-6 border-t border-slate-800">
+            <div class="flex items-center gap-3 text-sm font-medium text-slate-400">
+                <div
+                    class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
+                    CT</div>
+                <span>Case Admin</span>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-grow flex flex-col">
+
+        <header class="bg-white border-b border-slate-200 p-4 flex justify-between items-center sticky top-0 z-30">
+            <div class="flex items-center gap-4">
+                <div class="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                    Internal App
+                </div>
+            </div>
+            <div id="connection-status" class="flex items-center gap-2 text-[10px] font-bold text-green-500 uppercase">
+                <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> DB Connected
+            </div>
+        </header>
+
+        <div class="p-8 max-w-7xl mx-auto w-full space-y-8">
+
+            <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <h2 class="text-sm font-extrabold text-slate-800 uppercase tracking-tight">Create New Filing</h2>
+                    <i class="fa-solid fa-plus text-slate-400"></i>
+                </div>
+
+                <form id="paper-form" class="p-6 space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="relative">
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Target
+                                Defendant</label>
+                            <div class="relative">
+                                <i
+                                    class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                <input type="text" id="target-search" placeholder="Type name or case #"
+                                    class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                            </div>
+                            <div id="search-results"
+                                class="absolute z-40 w-full bg-white border border-slate-200 shadow-2xl rounded-xl hidden mt-2 max-h-60 overflow-y-auto">
+                            </div>
+                            <input type="hidden" id="selected-case-id">
+                            <input type="hidden" id="selected-def-id">
+                            <input type="hidden" id="selected-case-name">
+                            <input type="hidden" id="selected-def-name">
+                        </div>
+
+                        <div>
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Paper
+                                Category</label>
+                            <select id="paper-type"
+                                class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                                <option value="Pleading">Pleading</option>
+                                <option value="Motion">Motion</option>
+                                <option value="MSJ">MSJ</option>
+                                <option value="Courtesy Copies">Courtesy Copies</option>
+                                <option value="Fee Petition">Fee Petition</option>
+                                <option value="Discovery Req">Discovery Req</option>
+                                <option value="Discovery Resp">Discovery Resp</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label
+                                class="block text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Internal
+                                Memo / Notes</label>
+                            <input type="text" id="paper-desc" placeholder="Brief context..."
+                                class="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Associated
+                                Deadlines</h3>
+                            <button type="button" onclick="addDateRow()"
+                                class="text-xs font-bold text-blue-600 hover:text-blue-700">
+                                <i class="fa-solid fa-circle-plus"></i> Add Date
+                            </button>
+                        </div>
+                        <div id="date-rows-container" class="space-y-2">
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button type="submit"
+                            class="bg-slate-900 hover:bg-blue-600 text-white font-bold py-2.5 px-10 rounded-xl shadow-lg shadow-blue-900/10 transition-all transform hover:-translate-y-0.5">
+                            Save Filing & Dates
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 bg-white flex justify-between items-center">
+                    <div>
+                        <h2 class="text-sm font-extrabold text-slate-800 uppercase tracking-tight">Active Docket</h2>
+                        <p class="text-[10px] text-slate-400 font-bold">Showing papers with upcoming dates</p>
+                    </div>
+                    <div class="flex gap-1 p-1 bg-slate-100 rounded-xl">
+                        <button onclick="fetchPapers('past')"
+                            class="filter-btn px-4 py-1.5 text-[10px] font-bold rounded-lg hover:bg-white transition-all">PAST</button>
+                        <button onclick="fetchPapers('upcoming')"
+                            class="filter-btn px-4 py-1.5 text-[10px] font-bold bg-white rounded-lg shadow-sm text-blue-600">UPCOMING</button>
+                        <button onclick="fetchPapers('all')"
+                            class="filter-btn px-4 py-1.5 text-[10px] font-bold rounded-lg hover:bg-white transition-all">ALL</button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table id="active-docket-table" class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50/50 border-b border-slate-100">
+                                <th class="col-type text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                                    Filing Type</th>
+                                <th class="col-target text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                                    Linked Case/Defendant</th>
+                                <th class="col-event text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                                    Nearest Event</th>
+                                <th class="col-count text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                                    Deadline</th>
+                                <th class="col-action text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                                    Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="active-docket-body" class="divide-y divide-slate-50">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="/static/js/main.js"></script>
+</body>
+
+</html>

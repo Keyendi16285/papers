@@ -1,0 +1,53 @@
+/* Apply to the whole table structure for alignment */
+#active-docket-table {
+    width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse;
+}
+
+/* Ensure both headers and cells respect the column widths */
+#active-docket-table thead tr, 
+#active-docket-body tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+}
+
+#active-docket-table th,
+#active-docket-body td {
+    padding: 1rem;
+    vertical-align: middle;
+    overflow: hidden; /* Prevents long text from breaking alignment */
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Specific column weighting - adding !important to override Tailwind */
+.col-type { width: 25% !important; }
+.col-target { width: 30% !important; }
+.col-event { width: 20% !important; }
+.col-count { width: 15% !important; }
+.col-action { width: 10% !important; text-align: right; }
+
+/* Typography Consistency */
+.docket-title {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1e293b; /* Slate-800 */
+}
+
+.docket-subtext {
+    font-size: 0.75rem;
+    color: #64748b; /* Slate-500 */
+    line-height: 1.25;
+}
+
+.case-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
