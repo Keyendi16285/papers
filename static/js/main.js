@@ -543,6 +543,6 @@ function handleLogout() {
 
     // 2. Redirect to the central CaseTracker logout 
     // This ensures the session is killed on the Hetzner auth server too
-    const loginUrl = "https://casetracker.massfoia.com/login";
+    const loginUrl = "https://casetracker.massfoia.com/logout?next=login";
     window.location.replace(loginUrl);
 }
