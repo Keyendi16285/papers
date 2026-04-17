@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select, or_, and_
 from typing import List, Optional
 from datetime import datetime
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, HTTPBearer, HTTPAuthorizationCredentials, HTTPAuthorizationHeader
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 import os
 import httpx
@@ -35,16 +35,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         return username
     except JWTError:
         raise credentials_exception
-
-# --- LIFESPAN EVENT ---
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # This runs when the app starts
-    from .database import engine # Ensure engine is imported
-    SQLModel.metadata.create_all(engine) # Creates the CaseDriver table if it doesn't exist
-    with Session(engine) as session:
-        seed_drivers(session)
-    yield
     
 app = FastAPI(title="Papers Management System")
 
