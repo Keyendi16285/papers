@@ -532,3 +532,17 @@ async function fetchPapers(filter = 'upcoming') {
         container.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-red-500">Failed to load docket data.</td></tr>';
     }
 }
+
+/**
+ * Clear authentication and redirect to CaseTracker logout
+ */
+function handleLogout() {
+    // 1. Clear local session data
+    sessionStorage.removeItem("access_token");
+    localStorage.removeItem("access_token");
+
+    // 2. Redirect to the central CaseTracker logout 
+    // This ensures the session is killed on the Hetzner auth server too
+    const loginUrl = "https://casetracker.massfoia.com/login";
+    window.location.replace(loginUrl);
+}
