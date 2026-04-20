@@ -369,6 +369,12 @@
                     </div>
 
                     <div class="flex justify-end">
+                        
+                        <button type="button" id="cancel-edit-btn" onclick="resetForm()"
+                            class="hidden px-6 py-2 bg-slate-100 text-slate-600 rounded-lg font-bold hover:bg-slate-200 transition">
+                            Cancel
+                        </button>
+
                         <button type="submit"
                             class="bg-slate-900 hover:bg-blue-600 text-white font-bold py-2.5 px-10 rounded-xl shadow-lg shadow-blue-900/10 transition-all transform hover:-translate-y-0.5">
                             Save Filing & Dates
@@ -395,21 +401,19 @@
 
                 <div class="overflow-x-auto">
                     <table id="active-docket-table" class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-slate-50/50 border-b border-slate-100">
-                                <th class="col-type text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                                    Filing Type</th>
-                                <th class="col-target text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                                    Linked Case/Defendant</th>
-                                <th class="col-event text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                                    Nearest Event</th>
-                                <th class="col-count text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                                    Deadline</th>
-                                <th class="col-action text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                                    Action</th>
+                        <thead class="bg-slate-50/50 border-b border-slate-100">
+                            <tr class="text-left">
+                                <th class="p-4 text-[10px] font-bold text-slate-400 uppercase w-[25%]">Filing Type</th>
+                                <th class="p-4 text-[10px] font-bold text-slate-400 uppercase w-[25%]">Linked
+                                    Case/Defendant</th>
+                                <th class="p-4 text-[10px] font-bold text-slate-400 uppercase w-[20%]">Nearest Event
+                                </th>
+                                <th class="p-4 text-[10px] font-bold text-slate-400 uppercase w-[20%]">Deadline</th>
+                                <th class="p-4 text-[10px] font-bold text-slate-400 uppercase w-[10%] text-right">Action
+                                </th>
                             </tr>
                         </thead>
-                        <tbody id="active-docket-body" class="divide-y divide-slate-50">
+                        <tbody id="active-docket-body">
                         </tbody>
                     </table>
                 </div>

@@ -53,3 +53,29 @@ class PaperCreate(SQLModel):
     type: str
     description: Optional[str] = None
     dates: List[DateEntry]
+    
+# Define the "Schema" versions so FastAPI knows how to serialize the relationship
+class PaperDateRead(SQLModel):
+    id: int
+    paper_id: int
+    date: datetime
+    party: str
+    optional_text: Optional[str] = None
+    is_completed: bool
+
+class PaperRead(SQLModel):
+    id: int
+    case_id: int
+    defendant_id: int
+    case_name: str
+    defendant_name: str
+    type: str
+    description: Optional[str] = None
+    created_at: datetime
+    # This is the line that tells FastAPI to look for the "dates" relationship
+    dates: List[PaperDateRead] = []
+    
+class PaperDateUpdate(SQLModel):
+    date: datetime
+    party: str
+    optional_text: Optional[str] = None
