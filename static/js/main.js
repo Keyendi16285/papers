@@ -138,15 +138,29 @@ function addDateRow(data = null) {
         }
     }
 
+    const isCourtCategory = data?.party === 'Court Hearing' || data?.party === 'Court Other';
+
     row.innerHTML = `
         <div class="w-full md:w-1/3">
             <input type="datetime-local" class="row-date w-full p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500" 
                    value="${dateVal}">
         </div>
-        <div class="w-full md:w-20">
-            <select class="row-party w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none">
+        <div class="w-full md:w-32">
+            <select class="row-party w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none" 
+                    onchange="toggleCourtColumn(this)">
                 <option value="P" ${data?.party === 'P' ? 'selected' : ''}>P</option>
                 <option value="D" ${data?.party === 'D' ? 'selected' : ''}>D</option>
+                <option value="Court Hearing" ${data?.party === 'Court Hearing' ? 'selected' : ''}>Court Hearing</option>
+                <option value="Court Other" ${data?.party === 'Court Other' ? 'selected' : ''}>Court Other</option>
+            </select>
+        </div>
+        <div class="row-court-type-container ${isCourtCategory ? '' : 'hidden'} w-full md:w-32">
+            <select class="row-court-type w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none">
+                <option value="In Person" ${data?.court_type === 'In Person' ? 'selected' : ''}>In Person</option>
+                <option value="Zoom" ${data?.court_type === 'Zoom' ? 'selected' : ''}>Zoom</option>
+                <option value="Hybrid" ${data?.court_type === 'Hybrid' ? 'selected' : ''}>Hybrid</option>
+                <option value="Clerk" ${data?.court_type === 'Clerk' ? 'selected' : ''}>Clerk</option>
+                <option value="Unknown" ${data?.court_type === 'Unknown' ? 'selected' : ''}>Unknown</option>
             </select>
         </div>
         <div class="flex-grow">
@@ -159,6 +173,20 @@ function addDateRow(data = null) {
         </button>
     `;
     container.appendChild(row);
+}
+
+function toggleCourtColumn(selectElement) {
+    const row = selectElement.closest('.date-entry-row');
+    const courtContainer = row.querySelector('.row-court-type-container');
+    const value = selectElement.value;
+
+    if (value === 'Court Hearing' || value === 'Court Other') {
+        courtContainer.classList.remove('hidden');
+    } else {
+        courtContainer.classList.add('hidden');
+        // Optional: Reset court type value when hidden
+        courtContainer.querySelector('.row-court-type').value = "In Person";
+    }
 }
 
 // --- EDIT LOGIC ---
@@ -220,9 +248,12 @@ async function handleFormSubmit(e) {
     const dateRows = document.querySelectorAll('.date-entry-row');
     const dates = Array.from(dateRows).map(row => {
         const dateInput = row.querySelector('.row-date');
+        const partySelect = row.querySelector('.row-party');
+        const courtTypeSelect = row.querySelector('.row-court-type');
         return {
             date: dateInput ? dateInput.value : "",
-            party: row.querySelector('.row-party').value,
+            party: partySelect.value,
+            court_type: partySelect.value.includes('Court') ? courtTypeSelect.value : null,
             optional_text: row.querySelector('.row-text').value
         };
     }).filter(d => d.date !== "");

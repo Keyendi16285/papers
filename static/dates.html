@@ -56,6 +56,10 @@
                             class="flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-100 rounded-lg text-[10px] font-bold text-blue-600">
                             <span class="w-2 h-2 bg-blue-500 rounded-full"></span> Defendant
                         </div>
+                        <div
+                            class="flex items-center gap-2 px-3 py-1 bg-purple-50 border border-purple-100 rounded-lg text-[10px] font-bold text-purple-600">
+                            <span class="w-2 h-2 bg-purple-500 rounded-full"></span> Court
+                        </div>
                     </div>
                 </div>
 
@@ -90,24 +94,43 @@
             </div>
             <form id="edit-date-form" class="p-6 space-y-4">
                 <input type="hidden" id="edit-id">
+                
                 <div>
                     <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Deadline Date/Time</label>
                     <input type="datetime-local" id="edit-date"
                         class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
+
                 <div>
                     <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Responsible Party</label>
-                    <select id="edit-party"
+                    <select id="edit-party" onchange="toggleEditCourtType()"
                         class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="P">Plaintiff (P)</option>
                         <option value="D">Defendant (D)</option>
+                        <option value="Court Hearing">Court Hearing</option>
+                        <option value="Court Other">Court Other</option>
                     </select>
                 </div>
+
+                <div id="edit-court-type-container" class="hidden">
+                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Hearing Location</label>
+                    <select id="edit-court-type"
+                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="">N/A</option>
+                        <option value="In Person">In Person</option>
+                        <option value="Zoom">Zoom</option>
+                        <option value="Hybrid">Hybrid</option>
+                        <option value="Clerk">Clerk</option>
+                        <option value="Unknown">Unknown</option>
+                    </select>
+                </div>
+
                 <div>
                     <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Event Description</label>
                     <input type="text" id="edit-text"
                         class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
+
                 <div class="pt-4">
                     <button type="submit"
                         class="w-full bg-slate-900 hover:bg-blue-600 text-white font-bold py-3 rounded-xl transition-all">
@@ -118,6 +141,19 @@
         </div>
     </div>
 
+    <script>
+        // Inline helper to toggle court type field in the modal
+        function toggleEditCourtType() {
+            const party = document.getElementById('edit-party').value;
+            const container = document.getElementById('edit-court-type-container');
+            if (party.includes('Court')) {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+                document.getElementById('edit-court-type').value = "";
+            }
+        }
+    </script>
     <script src="/static/js/dates.js"></script>
 </body>
 

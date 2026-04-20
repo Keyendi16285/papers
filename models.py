@@ -1,8 +1,15 @@
-from sqlmodel import SQLModel, Field, Relationship
+from sqlmodel import Enum, SQLModel, Field, Relationship
 from typing import List, Optional
 from datetime import datetime
 
 # --- DATABASE MODELS ---
+
+class CourtLocationType(str, Enum):
+    IN_PERSON = "In Person"
+    ZOOM = "Zoom"
+    HYBRID = "Hybrid"
+    CLERK = "Clerk"
+    UNKNOWN = "Unknown"
 
 class Paper(SQLModel, table=True):
     """Represents a legal filing (e.g., Motion, Pleading)"""
@@ -32,9 +39,10 @@ class PaperDate(SQLModel, table=True):
     paper_id: int = Field(foreign_key="paper.id")
     
     date: datetime
-    party: str = Field(max_length=1)  # "P" or "D"
+    party: str = Field(nullable=False) # "P" or "D"
     optional_text: Optional[str] = None
     is_completed: bool = Field(default=False)
+    court_type: Optional[str] = Field(default=None)
 
     paper: Optional[Paper] = Relationship(back_populates="dates")
 
@@ -44,6 +52,7 @@ class DateEntry(SQLModel):
     date: datetime
     party: str
     optional_text: Optional[str] = None
+    court_type: Optional[str] = None
 
 class PaperCreate(SQLModel):
     case_id: int
@@ -79,3 +88,4 @@ class PaperDateUpdate(SQLModel):
     date: datetime
     party: str
     optional_text: Optional[str] = None
+    court_type: Optional[str] = None

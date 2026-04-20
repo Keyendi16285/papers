@@ -8,11 +8,11 @@ document.addEventListener('DOMContentLoaded', fetchAllDates);
 
 async function fetchAllDates() {
     const body = document.getElementById('dates-table-body');
-    
+
     try {
         const response = await fetch('/api/dates');
         const dates = await response.json();
-        
+
         if (dates.length === 0) {
             body.innerHTML = `<tr><td colspan="6" class="p-12 text-center text-slate-400 italic text-sm">No deadlines currently scheduled.</td></tr>`;
             return;
@@ -21,19 +21,31 @@ async function fetchAllDates() {
         body.innerHTML = dates.map(d => {
             const dateObj = new Date(d.date);
             const isPast = dateObj < new Date();
-            
-            // Requirement #9: P is light red, D is light blue
-            const partyRowColor = d.party === 'P' ? 'bg-red-50/50' : 'bg-blue-50/50';
-            const badgeColor = d.party === 'P' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700';
-            
-            // Clean strings for the onclick function to prevent JS breaks
+
+            let badgeColor = 'bg-slate-100 text-slate-700';
+            let partyRowColor = 'bg-white';
+
+            if (d.party === 'P') {
+                badgeColor = 'bg-red-100 text-red-700';
+                partyRowColor = 'bg-red-50/50';
+            } else if (d.party === 'D') {
+                badgeColor = 'bg-blue-100 text-blue-700';
+                partyRowColor = 'bg-blue-50/50';
+            } else if (d.party.includes('Court')) {
+                badgeColor = 'bg-purple-100 text-purple-700';
+                partyRowColor = 'bg-purple-50/50';
+            }
+
+            const locationInfo = d.court_type ? `<span class="text-[10px] block text-slate-400 italic">${d.court_type}</span>` : '';
             const safeText = (d.optional_text || "").replace(/'/g, "\\'");
+            // Ensure court_type is passed safely to the modal
+            const safeCourtType = (d.court_type || "").replace(/'/g, "\\'");
 
             return `
                 <tr class="${partyRowColor} hover:bg-slate-100 transition-colors border-b border-slate-50 ${isPast ? 'opacity-50' : ''}">
                     <td class="px-6 py-4">
-                        ${isPast 
-                            ? '<span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Past</span>' 
+                        ${isPast
+                            ? '<span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Past</span>'
                             : '<span class="text-[10px] font-bold text-green-600 uppercase tracking-tighter">Upcoming</span>'}
                     </td>
                     <td class="px-6 py-4">
@@ -48,6 +60,7 @@ async function fetchAllDates() {
                         <span class="px-3 py-1 rounded-full text-[10px] font-black border border-slate-200 ${badgeColor}">
                             ${d.party}
                         </span>
+                        ${locationInfo}
                     </td>
                     <td class="px-6 py-4">
                         <div class="text-xs font-bold text-slate-700 uppercase tracking-tighter">
@@ -64,7 +77,7 @@ async function fetchAllDates() {
                     </td>
                     <td class="px-6 py-4 text-right">
                         <button 
-                            onclick="openEditModal(${d.id}, '${d.date}', '${d.party}', '${safeText}')"
+                            onclick="openEditModal(${d.id}, '${d.date}', '${d.party}', '${safeText}', '${safeCourtType}')"
                             class="p-2 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg transition-all"
                         >
                             <i class="fa-solid fa-pen-to-square"></i>
@@ -82,7 +95,7 @@ async function fetchAllDates() {
 
 // --- MODAL & EDIT LOGIC ---
 
-function openEditModal(id, dateStr, party, text) {
+function openEditModal(id, dateStr, party, text, courtType = null) {
     // Convert to local format YYYY-MM-DDTHH:MM for input[type="datetime-local"]
     const date = new Date(dateStr);
     const localISO = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -91,7 +104,18 @@ function openEditModal(id, dateStr, party, text) {
     document.getElementById('edit-date').value = localISO;
     document.getElementById('edit-party').value = party;
     document.getElementById('edit-text').value = text;
-    
+
+    // Set the court type value if it exists
+    const courtTypeField = document.getElementById('edit-court-type');
+    if (courtTypeField) {
+        courtTypeField.value = courtType || "";
+        // Show/Hide logic: only show if party includes 'Court'
+        const container = document.getElementById('court-type-container'); 
+        if (container) {
+            container.classList.toggle('hidden', !party.includes('Court'));
+        }
+    }
+
     document.getElementById('edit-modal').classList.remove('hidden');
 }
 
@@ -102,12 +126,13 @@ function closeModal() {
 // Handle Update Submission
 document.getElementById('edit-date-form').onsubmit = async (e) => {
     e.preventDefault();
-    
+
     const id = document.getElementById('edit-id').value;
     const payload = {
         date: document.getElementById('edit-date').value,
         party: document.getElementById('edit-party').value,
-        optional_text: document.getElementById('edit-text').value
+        optional_text: document.getElementById('edit-text').value,
+        court_type: document.getElementById('edit-court-type') ? document.getElementById('edit-court-type').value : null
     };
 
     try {
@@ -131,7 +156,7 @@ document.getElementById('edit-date-form').onsubmit = async (e) => {
 };
 
 // Close modal if user clicks outside the box
-window.onclick = function(event) {
+window.onclick = function (event) {
     const modal = document.getElementById('edit-modal');
     if (event.target == modal) {
         closeModal();
