@@ -96,7 +96,8 @@ async def create_paper(payload: PaperCreate, session: Session = Depends(get_sess
             paper_id=new_paper.id,
             date=date_entry.date,
             party=date_entry.party,
-            optional_text=date_entry.optional_text
+            optional_text=date_entry.optional_text,
+            court_type=getattr(date_entry, "court_type", None)
         )
         session.add(new_date)
     
@@ -201,7 +202,8 @@ async def update_paper(
             paper_id=db_paper.id,
             date=date_entry.date,
             party=date_entry.party,
-            optional_text=date_entry.optional_text
+            optional_text=date_entry.optional_text,
+            court_type=getattr(date_entry, "court_type", None)
         )
         session.add(new_date)
         new_dates.append(new_date)
@@ -228,6 +230,7 @@ async def update_paper_date(
     db_date.date = date_update.date
     db_date.party = date_update.party
     db_date.optional_text = date_update.optional_text
+    db_date.court_type = date_update.court_type
     
     # 3. Save to database
     session.add(db_date)
