@@ -6,12 +6,12 @@
 }
 
 /* Ensure both headers and cells respect the column widths */
-#active-docket-table thead tr, 
+/* #active-docket-table thead tr, 
 #active-docket-body tr {
     display: table;
     width: 100%;
     table-layout: fixed;
-}
+} */
 
 #active-docket-table th,
 #active-docket-body td {
@@ -23,10 +23,11 @@
 }
 
 /* Specific column weighting - adding !important to override Tailwind */
-.col-type { width: 25% !important; }
-.col-target { width: 30% !important; }
-.col-event { width: 20% !important; }
-.col-count { width: 15% !important; }
+.col-type   { width: 20% !important; }
+.col-target { width: 25% !important; }
+.col-party  { width: 12% !important; } /* Added missing column */
+.col-event  { width: 18% !important; }
+.col-count  { width: 15% !important; }
 .col-action { width: 10% !important; text-align: right; }
 
 /* Typography Consistency */
