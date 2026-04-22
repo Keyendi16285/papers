@@ -404,14 +404,17 @@
                     <table id="active-docket-table" class="w-full text-left border-collapse">
                         <thead class="bg-slate-50/50 border-b border-slate-100">
                             <tr class="text-left">
-                                <th class="p-4 text-[10px] font-bold text-slate-400 uppercase w-[25%]">Filing Type</th>
-                                <th class="p-4 text-[10px] font-bold text-slate-400 uppercase w-[25%]">Linked
+                                <th class="col-type p-4 text-[10px] font-bold text-slate-400 uppercase">Filing Type</th>
+                                <th class="col-target p-4 text-[10px] font-bold text-slate-400 uppercase">Linked
                                     Case/Defendant</th>
-                                <th class="p-4 text-[10px] font-bold text-slate-400 uppercase w-[20%]">Nearest Event
+                                <th class="col-party p-4 text-[10px] font-bold text-slate-400 uppercase text-center">
+                                    Party</th>
+                                <th class="col-event p-4 text-[10px] font-bold text-slate-400 uppercase">Nearest Event
                                 </th>
-                                <th class="p-4 text-[10px] font-bold text-slate-400 uppercase w-[20%]">Deadline</th>
-                                <th class="p-4 text-[10px] font-bold text-slate-400 uppercase w-[10%] text-right">Action
-                                </th>
+                                <th class="col-count p-4 text-[10px] font-bold text-slate-400 uppercase text-center">
+                                    Deadline</th>
+                                <th class="col-action p-4 text-[10px] font-bold text-slate-400 uppercase text-right">
+                                    Action</th>
                             </tr>
                         </thead>
                         <tbody id="active-docket-body">

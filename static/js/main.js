@@ -301,66 +301,66 @@ async function fetchPapers(filter = 'upcoming') {
     const container = document.getElementById('active-docket-body');
     if (!container) return;
 
-    // Handle button styles
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.classList.remove('bg-white', 'shadow-sm', 'text-blue-600');
-        if (btn.textContent.trim().toLowerCase() === filter.toLowerCase()) {
-            btn.classList.add('bg-white', 'shadow-sm', 'text-blue-600');
-        }
-    });
-
     try {
         const response = await authFetch(`/api/papers?filter=${filter}`);
         const papers = await response.json();
 
         if (papers.length === 0) {
-            container.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400 italic">No ${filter} filings found.</td></tr>`;
+            container.innerHTML = '<tr><td colspan="6" class="p-12 text-center text-slate-400 italic">No filings found.</td></tr>';
             return;
         }
 
-        // Replace the mapping logic in fetchPapers with this fixed-width version
-        container.innerHTML = papers.map(paper => {
-            let nearestDateStr = 'No dates set';
-            if (paper.dates && paper.dates.length > 0) {
-                // Sort to find the actual nearest date
-                const sortedDates = [...paper.dates].sort((a, b) => new Date(a.date) - new Date(b.date));
-                const d = new Date(sortedDates[0].date);
-                nearestDateStr = d.toLocaleDateString('en-US', {
-                    month: 'short', day: 'numeric', year: 'numeric'
-                });
+        container.innerHTML = papers.map(p => {
+            // Find the nearest upcoming date
+            const upcomingDates = p.dates
+                .filter(d => new Date(d.date) >= new Date())
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            const nearestDate = upcomingDates[0] || (p.dates.length > 0 ? p.dates[0] : null);
+
+            // Generate the Party Badge
+            let partyBadge = '<span class="text-slate-300">--</span>';
+            if (nearestDate) {
+                let badgeStyle = 'bg-slate-100 text-slate-700';
+                if (nearestDate.party === 'P') badgeStyle = 'bg-red-100 text-red-700';
+                else if (nearestDate.party === 'D') badgeStyle = 'bg-blue-100 text-blue-700';
+                else if (nearestDate.party.includes('Court')) badgeStyle = 'bg-purple-100 text-purple-700';
+
+                partyBadge = `
+                    <span class="px-2 py-0.5 rounded-full text-[9px] font-black border border-slate-200 ${badgeStyle}">
+                        ${nearestDate.party}
+                    </span>
+                `;
             }
 
             return `
-                <tr class="border-b border-slate-50 hover:bg-slate-50/30 transition-all">
-                    <td class="p-4 align-top w-[25%]">
-                        <div class="text-[14px] font-bold text-slate-700 leading-tight">${paper.type}</div>
-                        <div class="text-[12px] text-slate-400 mt-0.5 line-clamp-1" title="${paper.description}">
-                            ${paper.description || 'No notes'}
+                <tr class="hover:bg-slate-50/50 transition-colors border-b border-slate-50">
+                    <td class="p-4">
+                        <div class="text-sm font-bold text-slate-700">${p.type}</div>
+                        <div class="text-[10px] text-slate-400 truncate max-w-[200px]">${p.description || ''}</div>
+                    </td>
+                    <td class="p-4">
+                        <div class="text-sm font-bold text-blue-600">${p.defendant_name}</div>
+                        <div class="text-[10px] text-slate-400 font-mono tracking-tighter">${p.case_name}</div>
+                    </td>
+                    <td class="p-4 text-center">
+                        ${partyBadge}
+                    </td>
+                    <td class="p-4">
+                        <div class="text-xs font-bold text-slate-700">
+                            ${nearestDate ? new Date(nearestDate.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
+                        </div>
+                        <div class="text-[9px] text-slate-400 uppercase font-black tracking-tighter">Nearest Event</div>
+                    </td>
+
+                    <td class="p-4 text-center">
+                        <div class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-600 text-xs font-black border border-slate-200">
+                            ${p.dates ? p.dates.length : 0}
                         </div>
                     </td>
 
-                    <td class="p-4 align-top w-[25%]">
-                        <div class="text-[14px] font-bold text-blue-600 leading-tight truncate">${paper.defendant_name}</div>
-                        <div class="mt-1">
-                            <span class="bg-slate-100 text-slate-500 text-[9px] px-1.5 py-0.5 rounded font-mono uppercase tracking-tighter">
-                                ${paper.case_name || 'N/A'}
-                            </span>
-                        </div>
-                    </td>
-
-                    <td class="p-4 align-top w-[20%]">
-                        <div class="text-[13px] font-bold text-slate-600 leading-none">${nearestDateStr}</div>
-                        <div class="text-[10px] text-slate-400 font-medium uppercase mt-1 tracking-tight">NEAREST EVENT</div>
-                    </td>
-
-                    <td class="p-4 align-top w-[20%]">
-                        <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-600">
-                            ${paper.dates?.length || 0} Deadlines
-                        </div>
-                    </td>
-
-                    <td class="p-4 text-right align-top w-[10%]">
-                        <button onclick="editPaper(${paper.id})" class="text-slate-300 hover:text-blue-500 transition-colors">
+                    <td class="p-4 text-right">
+                        <button onclick="editPaper(${p.id})" class="p-2 bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-blue-500 transition-colors">
                             <i class="fa-solid fa-pen-to-square text-[14px]"></i>
                         </button>
                     </td>
@@ -370,7 +370,7 @@ async function fetchPapers(filter = 'upcoming') {
 
     } catch (err) {
         console.error("Docket Load Error:", err);
-        container.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-red-500">Failed to load docket data.</td></tr>';
+        container.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-red-500">Failed to load docket data.</td></tr>';
     }
 }
 

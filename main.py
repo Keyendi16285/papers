@@ -12,7 +12,7 @@ import os
 import httpx
 
 from database import engine, create_db_and_tables, get_session
-from models import Paper, PaperDate, PaperCreate, DateEntry, PaperDateUpdate, PaperRead
+from models import Paper, PaperDate, PaperCreate, DateEntry, PaperDateReadWithPaper, PaperDateUpdate, PaperRead
 
 CASETRACKER_URL = os.getenv("CASETRACKER_URL", "http://host.docker.internal:8001")
 
@@ -123,11 +123,51 @@ async def list_papers(filter: str = "upcoming", session: Session = Depends(get_s
     results = session.exec(statement).all()
     return results
 
-@app.get("/api/dates", response_model=List[PaperDate])
+# @app.get("/api/dates", response_model=List[PaperDateReadWithPaper])
+# async def list_all_dates(session: Session = Depends(get_session)):
+#     # Add .options(selectinload(PaperDate.paper)) to include the parent Paper info
+#     statement = select(PaperDate).options(selectinload(PaperDate.paper)).order_by(PaperDate.date)
+#     return session.exec(statement).all()
+
+@app.get("/api/dates", response_model=List[PaperDateReadWithPaper])
 async def list_all_dates(session: Session = Depends(get_session)):
-    # Add .options(selectinload(PaperDate.paper)) to include the parent Paper info
     statement = select(PaperDate).options(selectinload(PaperDate.paper)).order_by(PaperDate.date)
-    return session.exec(statement).all()
+    dates = session.exec(statement).all()
+
+    async with httpx.AsyncClient() as client:
+        for d in dates:
+            # We use d.paper.case_name because that is where you store the Case Number
+            if d.paper and d.paper.case_name:
+                try:
+                    # We search the Case Tracker specifically for this case number
+                    search_url = f"{CASETRACKER_URL}/api/defendants/"
+                    response = await client.get(
+                        search_url, 
+                        params={"search": d.paper.case_name}, 
+                        timeout=3.0
+                    )
+                    
+                    if response.status_code == 200:
+                        results = response.json()
+                        if results and len(results) > 0:
+                            # We take the first match found in Case Tracker
+                            match = results[0]
+                            st = match.get("state", "")
+                            co = match.get("county", "")
+                            
+                            if st and co:
+                                d.paper.location_name = f"{st} / {co}"
+                            else:
+                                d.paper.location_name = st or co or "Unknown"
+                        else:
+                            d.paper.location_name = "No Case Match"
+                    else:
+                        d.paper.location_name = "Unknown"
+                except Exception as e:
+                    print(f"Lookup failed for {d.paper.case_name}: {e}")
+                    d.paper.location_name = "Offline"
+            
+    return dates
 
 @app.get("/api/papers/{paper_id}", response_model=PaperRead)
 async def get_paper(paper_id: int, session: Session = Depends(get_session), user = Depends(get_current_user)):

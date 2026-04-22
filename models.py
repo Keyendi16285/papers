@@ -22,6 +22,7 @@ class Paper(SQLModel, table=True):
     # Metadata for quick display
     case_name: str
     defendant_name: str
+    location_name: Optional[str] = Field(default="Unknown") # For State/County
     
     type: str  # Motion, Pleading, MSJ, etc.
     description: Optional[str] = None
@@ -78,6 +79,7 @@ class PaperRead(SQLModel):
     defendant_id: int
     case_name: str
     defendant_name: str
+    location_name: Optional[str] = None
     type: str
     description: Optional[str] = None
     created_at: datetime
@@ -89,3 +91,14 @@ class PaperDateUpdate(SQLModel):
     party: str
     optional_text: Optional[str] = None
     court_type: Optional[str] = None
+    
+class PaperDateReadWithPaper(SQLModel):
+    id: int
+    paper_id: int
+    date: datetime
+    party: str
+    optional_text: Optional[str] = None
+    is_completed: bool
+    court_type: Optional[str] = None
+    # Add this line to include the parent details in the JSON
+    paper: Optional[PaperRead] = None
