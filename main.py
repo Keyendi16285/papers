@@ -86,8 +86,16 @@ async def create_paper(payload: PaperCreate, session: Session = Depends(get_sess
         case_name=payload.case_name,
         defendant_name=payload.defendant_name,
         type=payload.type,
-        description=payload.description
+        description=payload.description,
+        is_casewide=payload.is_casewide
     )
+    
+    # FORCE NAME TO "All Defendants" IF CASEWIDE
+    if payload.is_casewide:
+        new_paper.defendant_name = "All Defendants"
+    else:
+        new_paper.defendant_name = payload.defendant_name
+        
     session.add(new_paper)
     session.flush()  # Flush to get the new paper ID for foreign key references
 
@@ -230,6 +238,13 @@ async def update_paper(
     db_paper.defendant_id = payload.defendant_id
     db_paper.case_name = payload.case_name
     db_paper.defendant_name = payload.defendant_name
+    db_paper.is_casewide = payload.is_casewide
+    
+    # FORCE NAME TO "All Defendants" IF CASEWIDE
+    if payload.is_casewide:
+        db_paper.defendant_name = "All Defendants"
+    else:
+        db_paper.defendant_name = payload.defendant_name
 
     # 3. Clear old dates
     for old_date in db_paper.dates:

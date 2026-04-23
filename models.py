@@ -22,6 +22,7 @@ class Paper(SQLModel, table=True):
     # Metadata for quick display
     case_name: str
     defendant_name: str
+    is_casewide: bool = Field(default=False)
     location_name: Optional[str] = Field(default="Unknown") # For State/County
     
     type: str  # Motion, Pleading, MSJ, etc.
@@ -61,6 +62,7 @@ class PaperCreate(SQLModel):
     case_name: str
     defendant_name: str
     type: str
+    is_casewide: bool = False
     description: Optional[str] = None
     dates: List[DateEntry]
     
@@ -79,6 +81,7 @@ class PaperRead(SQLModel):
     defendant_id: int
     case_name: str
     defendant_name: str
+    is_casewide: bool
     location_name: Optional[str] = None
     type: str
     description: Optional[str] = None
