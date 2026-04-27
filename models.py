@@ -21,9 +21,11 @@ class Paper(SQLModel, table=True):
     
     # Metadata for quick display
     case_name: str
+    case_title: Optional[str] = None
     defendant_name: str
     is_casewide: bool = Field(default=False)
     location_name: Optional[str] = Field(default="Unknown") # For State/County
+    total_defendants: int = Field(default=1)
     
     type: str  # Motion, Pleading, MSJ, etc.
     description: Optional[str] = None
@@ -45,6 +47,7 @@ class PaperDate(SQLModel, table=True):
     optional_text: Optional[str] = None
     is_completed: bool = Field(default=False)
     court_type: Optional[str] = Field(default=None)
+    event_link: Optional[str] = None
 
     paper: Optional[Paper] = Relationship(back_populates="dates")
 
@@ -55,16 +58,19 @@ class DateEntry(SQLModel):
     party: str
     optional_text: Optional[str] = None
     court_type: Optional[str] = None
-
+    event_link: Optional[str] = None
+    
 class PaperCreate(SQLModel):
     case_id: int
     defendant_id: int
     case_name: str
+    case_title: Optional[str] = None
     defendant_name: str
     type: str
     is_casewide: bool = False
     description: Optional[str] = None
     dates: List[DateEntry]
+    total_defendants: int = 1
     
 # Define the "Schema" versions so FastAPI knows how to serialize the relationship
 class PaperDateRead(SQLModel):
@@ -74,12 +80,14 @@ class PaperDateRead(SQLModel):
     party: str
     optional_text: Optional[str] = None
     is_completed: bool
+    event_link: Optional[str] = None
 
 class PaperRead(SQLModel):
     id: int
     case_id: int
     defendant_id: int
     case_name: str
+    case_title: Optional[str] = None
     defendant_name: str
     is_casewide: bool
     location_name: Optional[str] = None
@@ -103,5 +111,6 @@ class PaperDateReadWithPaper(SQLModel):
     optional_text: Optional[str] = None
     is_completed: bool
     court_type: Optional[str] = None
+    event_link: Optional[str] = None
     # Add this line to include the parent details in the JSON
     paper: Optional[PaperRead] = None
