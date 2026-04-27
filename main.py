@@ -84,17 +84,18 @@ async def create_paper(payload: PaperCreate, session: Session = Depends(get_sess
         case_id=payload.case_id,
         defendant_id=payload.defendant_id,
         case_name=payload.case_name,
+        case_title=payload.case_title,
         defendant_name=payload.defendant_name,
         type=payload.type,
         description=payload.description,
         is_casewide=payload.is_casewide
     )
     
-    # FORCE NAME TO "All Defendants" IF CASEWIDE
-    if payload.is_casewide:
-        new_paper.defendant_name = "All Defendants"
-    else:
-        new_paper.defendant_name = payload.defendant_name
+    # # FORCE NAME TO "All Defendants" IF CASEWIDE
+    # if payload.is_casewide:
+    #     new_paper.defendant_name = "All Defendants"
+    # else:
+    #     new_paper.defendant_name = payload.defendant_name
         
     session.add(new_paper)
     session.flush()  # Flush to get the new paper ID for foreign key references
@@ -105,7 +106,8 @@ async def create_paper(payload: PaperCreate, session: Session = Depends(get_sess
             date=date_entry.date,
             party=date_entry.party,
             optional_text=date_entry.optional_text,
-            court_type=getattr(date_entry, "court_type", None)
+            court_type=getattr(date_entry, "court_type", None),
+            event_link=date_entry.event_link
         )
         session.add(new_date)
     
@@ -131,23 +133,22 @@ async def list_papers(filter: str = "upcoming", session: Session = Depends(get_s
     results = session.exec(statement).all()
     return results
 
-# @app.get("/api/dates", response_model=List[PaperDateReadWithPaper])
-# async def list_all_dates(session: Session = Depends(get_session)):
-#     # Add .options(selectinload(PaperDate.paper)) to include the parent Paper info
-#     statement = select(PaperDate).options(selectinload(PaperDate.paper)).order_by(PaperDate.date)
-#     return session.exec(statement).all()
-
 @app.get("/api/dates", response_model=List[PaperDateReadWithPaper])
-async def list_all_dates(session: Session = Depends(get_session)):
+async def list_all_dates(
+    session: Session = Depends(get_session),
+    user = Depends(get_current_user)
+):
+    # Select PaperDate objects and eagerly load the associated Paper
+    # This automatically includes event_link because it's part of the PaperDate model
     statement = select(PaperDate).options(selectinload(PaperDate.paper)).order_by(PaperDate.date)
     dates = session.exec(statement).all()
 
     async with httpx.AsyncClient() as client:
         for d in dates:
-            # We use d.paper.case_name because that is where you store the Case Number
+            # We use d.paper.case_name because that is where the Case Number is stored
             if d.paper and d.paper.case_name:
                 try:
-                    # We search the Case Tracker specifically for this case number
+                    # Search Case Tracker for location metadata (State/County)
                     search_url = f"{CASETRACKER_URL}/api/defendants/"
                     response = await client.get(
                         search_url, 
@@ -158,7 +159,7 @@ async def list_all_dates(session: Session = Depends(get_session)):
                     if response.status_code == 200:
                         results = response.json()
                         if results and len(results) > 0:
-                            # We take the first match found in Case Tracker
+                            # Use the first match found in Case Tracker to populate location
                             match = results[0]
                             st = match.get("state", "")
                             co = match.get("county", "")
@@ -177,6 +178,46 @@ async def list_all_dates(session: Session = Depends(get_session)):
             
     return dates
 
+# @app.get("/api/dates", response_model=List[PaperDateReadWithPaper])
+# async def list_all_dates(session: Session = Depends(get_session)):
+#     statement = select(PaperDate).options(selectinload(PaperDate.paper)).order_by(PaperDate.date)
+#     dates = session.exec(statement).all()
+
+#     async with httpx.AsyncClient() as client:
+#         for d in dates:
+#             # We use d.paper.case_name because that is where you store the Case Number
+#             if d.paper and d.paper.case_name:
+#                 try:
+#                     # We search the Case Tracker specifically for this case number
+#                     search_url = f"{CASETRACKER_URL}/api/defendants/"
+#                     response = await client.get(
+#                         search_url, 
+#                         params={"search": d.paper.case_name}, 
+#                         timeout=3.0
+#                     )
+                    
+#                     if response.status_code == 200:
+#                         results = response.json()
+#                         if results and len(results) > 0:
+#                             # We take the first match found in Case Tracker
+#                             match = results[0]
+#                             st = match.get("state", "")
+#                             co = match.get("county", "")
+                            
+#                             if st and co:
+#                                 d.paper.location_name = f"{st} / {co}"
+#                             else:
+#                                 d.paper.location_name = st or co or "Unknown"
+#                         else:
+#                             d.paper.location_name = "No Case Match"
+#                     else:
+#                         d.paper.location_name = "Unknown"
+#                 except Exception as e:
+#                     print(f"Lookup failed for {d.paper.case_name}: {e}")
+#                     d.paper.location_name = "Offline"
+            
+#     return dates
+
 @app.get("/api/papers/{paper_id}", response_model=PaperRead)
 async def get_paper(paper_id: int, session: Session = Depends(get_session), user = Depends(get_current_user)):
     # Ensure selectinload is used here too for the Edit button
@@ -188,6 +229,35 @@ async def get_paper(paper_id: int, session: Session = Depends(get_session), user
     return paper
 
 # --- SEARCH PROXY ---
+# @app.get("/api/search/targets")
+# async def search_targets(q: str):
+#     CASETRACKER_URL = os.getenv("CASETRACKER_URL", "http://host.docker.internal:8001")
+    
+#     async with httpx.AsyncClient() as client:
+#         try:
+#             target_url = f"{CASETRACKER_URL}/api/defendants/"
+#             response = await client.get(
+#                 target_url, 
+#                 params={"search": q}, 
+#                 timeout=5.0
+#             )
+#             response.raise_for_status()
+#             data = response.json()
+            
+#             return [
+#                 {
+#                     "id": item.get("id"), 
+#                     "case_id": item.get("case_id"), 
+#                     "name": item.get("name"), 
+#                     "case_no": item.get("case_number"),
+#                     "case_name": item.get("case_name")
+#                 } 
+#                 for item in data
+#             ]
+#         except Exception as e:
+#             print(f"DEBUG: Connection to {CASETRACKER_URL} failed: {e}")
+#             return []
+
 @app.get("/api/search/targets")
 async def search_targets(q: str):
     CASETRACKER_URL = os.getenv("CASETRACKER_URL", "http://host.docker.internal:8001")
@@ -202,13 +272,25 @@ async def search_targets(q: str):
             )
             response.raise_for_status()
             data = response.json()
+
+            # 1. Create a frequency map using Case Number (e.g., "2026CH3")
+            # We use case_number because it identifies the case globally in your records
+            case_counts = {}
+            for item in data:
+                # 'case_number' comes from the CaseTracker response
+                cnum = item.get("case_number")
+                if cnum:
+                    case_counts[cnum] = case_counts.get(cnum, 0) + 1
             
+            # 2. Return the data with the count based on the Case Number
             return [
                 {
                     "id": item.get("id"), 
                     "case_id": item.get("case_id"), 
                     "name": item.get("name"), 
-                    "case_no": item.get("case_number")
+                    "case_no": item.get("case_number"), # This is our grouping key
+                    "case_name": item.get("case_name"),   # This is the title for Rule 1
+                    "total_defendants": case_counts.get(item.get("case_number"), 1)
                 } 
                 for item in data
             ]
@@ -237,14 +319,15 @@ async def update_paper(
     db_paper.case_id = payload.case_id
     db_paper.defendant_id = payload.defendant_id
     db_paper.case_name = payload.case_name
+    db_paper.case_title = payload.case_title
     db_paper.defendant_name = payload.defendant_name
     db_paper.is_casewide = payload.is_casewide
     
-    # FORCE NAME TO "All Defendants" IF CASEWIDE
-    if payload.is_casewide:
-        db_paper.defendant_name = "All Defendants"
-    else:
-        db_paper.defendant_name = payload.defendant_name
+    # # FORCE NAME TO "All Defendants" IF CASEWIDE
+    # if payload.is_casewide:
+    #     db_paper.defendant_name = "All Defendants"
+    # else:
+    #     db_paper.defendant_name = payload.defendant_name
 
     # 3. Clear old dates
     for old_date in db_paper.dates:
@@ -258,7 +341,8 @@ async def update_paper(
             date=date_entry.date,
             party=date_entry.party,
             optional_text=date_entry.optional_text,
-            court_type=getattr(date_entry, "court_type", None)
+            court_type=getattr(date_entry, "court_type", None),
+            event_link=date_entry.event_link
         )
         session.add(new_date)
         new_dates.append(new_date)
@@ -286,6 +370,7 @@ async def update_paper_date(
     db_date.party = date_update.party
     db_date.optional_text = date_update.optional_text
     db_date.court_type = date_update.court_type
+    db_date.event_link = date_update.event_link
     
     # 3. Save to database
     session.add(db_date)
