@@ -178,46 +178,6 @@ async def list_all_dates(
             
     return dates
 
-# @app.get("/api/dates", response_model=List[PaperDateReadWithPaper])
-# async def list_all_dates(session: Session = Depends(get_session)):
-#     statement = select(PaperDate).options(selectinload(PaperDate.paper)).order_by(PaperDate.date)
-#     dates = session.exec(statement).all()
-
-#     async with httpx.AsyncClient() as client:
-#         for d in dates:
-#             # We use d.paper.case_name because that is where you store the Case Number
-#             if d.paper and d.paper.case_name:
-#                 try:
-#                     # We search the Case Tracker specifically for this case number
-#                     search_url = f"{CASETRACKER_URL}/api/defendants/"
-#                     response = await client.get(
-#                         search_url, 
-#                         params={"search": d.paper.case_name}, 
-#                         timeout=3.0
-#                     )
-                    
-#                     if response.status_code == 200:
-#                         results = response.json()
-#                         if results and len(results) > 0:
-#                             # We take the first match found in Case Tracker
-#                             match = results[0]
-#                             st = match.get("state", "")
-#                             co = match.get("county", "")
-                            
-#                             if st and co:
-#                                 d.paper.location_name = f"{st} / {co}"
-#                             else:
-#                                 d.paper.location_name = st or co or "Unknown"
-#                         else:
-#                             d.paper.location_name = "No Case Match"
-#                     else:
-#                         d.paper.location_name = "Unknown"
-#                 except Exception as e:
-#                     print(f"Lookup failed for {d.paper.case_name}: {e}")
-#                     d.paper.location_name = "Offline"
-            
-#     return dates
-
 @app.get("/api/papers/{paper_id}", response_model=PaperRead)
 async def get_paper(paper_id: int, session: Session = Depends(get_session), user = Depends(get_current_user)):
     # Ensure selectinload is used here too for the Edit button
@@ -227,36 +187,6 @@ async def get_paper(paper_id: int, session: Session = Depends(get_session), user
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
     return paper
-
-# --- SEARCH PROXY ---
-# @app.get("/api/search/targets")
-# async def search_targets(q: str):
-#     CASETRACKER_URL = os.getenv("CASETRACKER_URL", "http://host.docker.internal:8001")
-    
-#     async with httpx.AsyncClient() as client:
-#         try:
-#             target_url = f"{CASETRACKER_URL}/api/defendants/"
-#             response = await client.get(
-#                 target_url, 
-#                 params={"search": q}, 
-#                 timeout=5.0
-#             )
-#             response.raise_for_status()
-#             data = response.json()
-            
-#             return [
-#                 {
-#                     "id": item.get("id"), 
-#                     "case_id": item.get("case_id"), 
-#                     "name": item.get("name"), 
-#                     "case_no": item.get("case_number"),
-#                     "case_name": item.get("case_name")
-#                 } 
-#                 for item in data
-#             ]
-#         except Exception as e:
-#             print(f"DEBUG: Connection to {CASETRACKER_URL} failed: {e}")
-#             return []
 
 @app.get("/api/search/targets")
 async def search_targets(q: str):
@@ -353,6 +283,17 @@ async def update_paper(
     # Explicitly refresh to get the new dates back into the object
     session.refresh(db_paper)
     return db_paper
+
+@app.get("/api/papers/dates/upcoming", response_model=List[PaperDateReadWithPaper])
+async def get_upcoming_dates(session: Session = Depends(get_session)):
+    statement = (
+        select(PaperDate)
+        .where(PaperDate.date >= datetime.now())
+        .order_by(PaperDate.date)
+        .options(selectinload(PaperDate.paper))
+    )
+    results = session.exec(statement).all()
+    return results
 
 @app.patch("/api/papers/dates/{date_id}", response_model=PaperDate)
 async def update_paper_date(
