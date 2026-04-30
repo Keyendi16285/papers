@@ -102,6 +102,7 @@ class PaperDateUpdate(SQLModel):
     party: str
     optional_text: Optional[str] = None
     court_type: Optional[str] = None
+    event_link: Optional[str] = None
     
 class PaperDateReadWithPaper(SQLModel):
     id: int
