@@ -286,14 +286,47 @@ async def update_paper(
 
 @app.get("/api/papers/dates/upcoming", response_model=List[PaperDateReadWithPaper])
 async def get_upcoming_dates(session: Session = Depends(get_session)):
+    # 1. Fetch upcoming dates
     statement = (
         select(PaperDate)
         .where(PaperDate.date >= datetime.now())
         .order_by(PaperDate.date)
         .options(selectinload(PaperDate.paper))
     )
-    results = session.exec(statement).all()
-    return results
+    dates = session.exec(statement).all()
+
+    # 2. Perform external lookup for State/County (Added logic)
+    async with httpx.AsyncClient() as client:
+        for d in dates:
+            if d.paper and d.paper.case_name:
+                try:
+                    search_url = f"{CASETRACKER_URL}/api/defendants/"
+                    response = await client.get(
+                        search_url, 
+                        params={"search": d.paper.case_name}, 
+                        timeout=3.0
+                    )
+                    
+                    if response.status_code == 200:
+                        results = response.json()
+                        if results and len(results) > 0:
+                            match = results[0]
+                            st = match.get("state", "")
+                            co = match.get("county", "")
+                            
+                            if st and co:
+                                d.paper.location_name = f"{st} / {co}"
+                            else:
+                                d.paper.location_name = st or co or "Unknown"
+                        else:
+                            d.paper.location_name = "No Case Match"
+                    else:
+                        d.paper.location_name = "Unknown"
+                except Exception as e:
+                    print(f"Lookup failed for {d.paper.case_name}: {e}")
+                    d.paper.location_name = "Offline"
+            
+    return dates
 
 @app.patch("/api/papers/dates/{date_id}", response_model=PaperDate)
 async def update_paper_date(
