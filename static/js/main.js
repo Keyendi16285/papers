@@ -514,7 +514,7 @@ function updateNamingConvention(isCasewide) {
     } else {
         // RULE 2 & 3: Individual
         if (window.totalDefendantsInCase > 1) {
-            window.selectedDefendantName = `${window.currentDefendantBaseName} et al (all ${window.totalDefendantsInCase} Defendants)`;
+            window.selectedDefendantName = `${window.currentDefendantBaseName} et al.  (${window.totalDefendantsInCase})`;
         } else {
             window.selectedDefendantName = window.currentDefendantBaseName;
         }
@@ -694,7 +694,7 @@ async function editPaper(id) {
         
         // Setup initial state for re-applying selection logic
         window.currentCaseTitle = paper.case_title || paper.case_name;
-        window.currentDefendantBaseName = paper.defendant_name.split(' et al')[0];
+        window.currentDefendantBaseName = paper.defendant_name.split(' et al.')[0];
         window.selectedCaseId = paper.case_id;
         window.selectedDefendantId = paper.defendant_id;
         window.selectedCaseName = paper.case_name;
