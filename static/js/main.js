@@ -464,6 +464,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const paperForm = document.getElementById('paper-form');
     if (paperForm) paperForm.onsubmit = handleFormSubmit;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchName = urlParams.get('search');
+    
+    if (searchName) {
+        const searchInput = document.getElementById('paper-search-input');
+        if (searchInput) {
+            searchInput.value = searchName;
+            // Trigger the search function to filter the table immediately
+            if (typeof fetchPapers === 'function') {
+                fetchPapers(searchName);
+            }
+        }
+    }
 });
 
 // --- CASEWIDE UI MODE & NAMING LOGIC ---
