@@ -379,7 +379,7 @@ window.selectedDefendantId = null;
 window.selectedCaseId = null;
 window.selectedCaseName = null;     // Stores Case Number (e.g., 2026CH3)
 window.selectedDefendantName = null; // Stores the formatted display name (The 3 Rules)
-
+window.currentActiveFilter = 'all';
 // Helper variables for the naming logic
 window.currentCaseTitle = null;      // Stores Case Title (e.g., Multiple Def v. Defendants)
 window.currentDefendantBaseName = null;
@@ -627,11 +627,42 @@ async function handleFormSubmit(e) {
     } catch (err) { console.error("Submit failed:", err); }
 }
 
-async function fetchPapers(filter = 'upcoming') {
+document.addEventListener('DOMContentLoaded', () => {
+    // ... existing initialization (Auth Check, etc.) ...
+
+    // NEW: Listener for the Dashboard Table Search
+    const tableSearchInput = document.getElementById('paper-search-input');
+    if (tableSearchInput) {
+        tableSearchInput.addEventListener('input', (e) => {
+            const searchQuery = e.target.value;
+            const activeFilter = window.currentActiveFilter || 'all';
+            fetchPapers(activeFilter, searchQuery);
+        });
+    }
+
+    fetchPapers('all'); // Initial load
+});
+
+async function fetchPapers(filter = 'all', searchQuery = '') {
+    window.currentActiveFilter = filter; // Store current filter for search context
     const container = document.getElementById('active-docket-body');
     if (!container) return;
+
+    // Update UI button states (Active/Inactive styling)
+    ['all', 'upcoming', 'past'].forEach(f => {
+        const btn = document.getElementById(`filter-${f}`);
+        if (btn) {
+            btn.className = f === filter 
+                ? "px-3 py-1 text-sm font-medium rounded-md transition-all bg-blue-600 text-white"
+                : "px-3 py-1 text-sm font-medium rounded-md transition-all text-slate-600 hover:bg-slate-50";
+        }
+    });
     try {
-        const response = await authFetch(`/api/papers?filter=${filter}`);
+        // Construct URL with both filter and search query
+        let url = `/api/papers?filter=${filter}`;
+        if (searchQuery) url += `&q=${encodeURIComponent(searchQuery)}`;
+
+        const response = await authFetch(url);
         const papers = await response.json();
         if (papers.length === 0) {
             container.innerHTML = '<tr><td colspan="6" class="p-12 text-center text-slate-400 italic">No filings found.</td></tr>';
@@ -737,3 +768,8 @@ function handleLogout() {
     sessionStorage.clear();
     window.location.replace("https://casetracker.massfoia.com/logout?next=login");
 }
+
+window.filterDashboard = (filter) => {
+    const query = document.getElementById('paper-search-input')?.value || '';
+    fetchPapers(filter, query);
+};

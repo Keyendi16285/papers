@@ -16,24 +16,36 @@ async function authFetch(url, options = {}) {
     return response;
 }
 
-document.addEventListener('DOMContentLoaded', fetchAllDates);
+document.addEventListener('DOMContentLoaded', () => {
+    const deadlineSearch = document.getElementById('paper-search-input');
+    if (deadlineSearch) {
+        deadlineSearch.addEventListener('input', (e) => {
+            fetchAllDates(e.target.value);
+        });
+    }
+    fetchAllDates();
+});
 
-async function fetchAllDates() {
+async function fetchAllDates(searchQuery = '') {
     const body = document.getElementById('dates-table-body');
     if (!body) return;
 
     try {
-        const response = await authFetch('/api/papers/dates/upcoming');
+        // Append query to the upcoming dates endpoint
+        let url = '/api/papers/dates/upcoming';
+        if (searchQuery) url += `?q=${encodeURIComponent(searchQuery)}`;
+        
+        const response = await authFetch(url);
         const dates = await response.json();
 
-        if (!Array.isArray(dates)) {
-            console.error("Server error:", dates);
-            body.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-red-500 italic">Error loading data. ${dates.detail || ''}</td></tr>`;
-            return;
-        }
+        // if (!Array.isArray(dates)) {
+        //     console.error("Server error:", dates);
+        //     body.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-red-500 italic">Error loading data. ${dates.detail || ''}</td></tr>`;
+        //     return;
+        // }
 
         if (dates.length === 0) {
-            body.innerHTML = `<tr><td colspan="8" class="p-12 text-center text-slate-400 italic text-sm">No deadlines currently scheduled.</td></tr>`;
+            body.innerHTML = `<tr><td colspan="8" class="p-12 text-center text-slate-400 italic text-sm">No deadlines found matching your search.</td></tr>`;
             return;
         }
 
