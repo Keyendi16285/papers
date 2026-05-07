@@ -90,12 +90,6 @@ async def create_paper(payload: PaperCreate, session: Session = Depends(get_sess
         description=payload.description,
         is_casewide=payload.is_casewide
     )
-    
-    # # FORCE NAME TO "All Defendants" IF CASEWIDE
-    # if payload.is_casewide:
-    #     new_paper.defendant_name = "All Defendants"
-    # else:
-    #     new_paper.defendant_name = payload.defendant_name
         
     session.add(new_paper)
     session.flush()  # Flush to get the new paper ID for foreign key references
@@ -116,7 +110,7 @@ async def create_paper(payload: PaperCreate, session: Session = Depends(get_sess
     return new_paper
 
 @app.get("/api/papers", response_model=List[PaperRead])
-async def list_papers(filter: str = "upcoming", session: Session = Depends(get_session)):
+async def list_papers(filter: str = "upcoming", q: str = None, session: Session = Depends(get_session)):
     now = datetime.now()
     
     # Base query: Always use selectinload to ensure dates are included in the JSON
@@ -128,6 +122,16 @@ async def list_papers(filter: str = "upcoming", session: Session = Depends(get_s
     elif filter == "past":
         # Filters papers that have AT LEAST ONE date < now
         statement = statement.where(Paper.dates.any(PaperDate.date < now))
+        
+    # Search Logic (Check case name OR defendant name)
+    if q:
+        search_term = f"%{q}%"
+        statement = statement.where(
+            or_(
+                Paper.case_name.ilike(search_term),
+                Paper.defendant_name.ilike(search_term)
+            )
+        )
 
     # results.all() will now contain the papers AND their nested dates array
     results = session.exec(statement).all()
@@ -135,12 +139,24 @@ async def list_papers(filter: str = "upcoming", session: Session = Depends(get_s
 
 @app.get("/api/dates", response_model=List[PaperDateReadWithPaper])
 async def list_all_dates(
+    q: str = None,
     session: Session = Depends(get_session),
     user = Depends(get_current_user)
 ):
     # Select PaperDate objects and eagerly load the associated Paper
     # This automatically includes event_link because it's part of the PaperDate model
     statement = select(PaperDate).options(selectinload(PaperDate.paper)).order_by(PaperDate.date)
+    
+    # Filter by Case or Defendant name if search is active
+    if q:
+        search_term = f"%{q}%"
+        statement = statement.join(Paper).where(
+            or_(
+                Paper.case_name.ilike(search_term),
+                Paper.defendant_name.ilike(search_term)
+            )
+        )
+        
     dates = session.exec(statement).all()
 
     async with httpx.AsyncClient() as client:
@@ -253,12 +269,6 @@ async def update_paper(
     db_paper.defendant_name = payload.defendant_name
     db_paper.is_casewide = payload.is_casewide
     
-    # # FORCE NAME TO "All Defendants" IF CASEWIDE
-    # if payload.is_casewide:
-    #     db_paper.defendant_name = "All Defendants"
-    # else:
-    #     db_paper.defendant_name = payload.defendant_name
-
     # 3. Clear old dates
     for old_date in db_paper.dates:
         session.delete(old_date)
