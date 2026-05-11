@@ -1,7 +1,8 @@
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from sqlmodel import Session, select, or_, and_, SQLModel, Field, Relationship
 from typing import List, Optional
 from datetime import datetime
@@ -11,8 +12,8 @@ from sqlalchemy.orm import selectinload
 import os
 import httpx
 
-from database import engine, create_db_and_tables, get_session
-from models import Paper, PaperDate, PaperCreate, DateEntry, PaperDateReadWithPaper, PaperDateUpdate, PaperRead
+from database import engine, create_db_and_tables, get_session, get_db
+from models import Paper, PaperDate, PaperCreate, DateEntry, PaperDateReadWithPaper, PaperDateUpdate, PaperRead, PaperReview
 
 CASETRACKER_URL = os.getenv("CASETRACKER_URL", "http://host.docker.internal:8001")
 
@@ -56,6 +57,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+class ReviewApprovalRequest(BaseModel):
+    case_number: str
+    review_ids: List[int]
 
 # 1. Initialize Database on Startup
 @app.on_event("startup")
@@ -362,3 +367,80 @@ async def update_paper_date(
     session.refresh(db_date)
     
     return db_date
+
+@app.get("/review.html", response_class=HTMLResponse)
+async def read_review():
+    with open("static/review.html") as f:
+        return f.read()
+
+@app.get("/api/review/suggestions")
+async def get_review_suggestions(db: Session = Depends(get_db)):
+    # 1. Fetch only 'pending' items from the staging table
+    query = select(PaperReview).where(PaperReview.status == "pending")
+    items = db.exec(query).all()
+    
+    # 2. Group them by case_number
+    suggestions = {}
+    for item in items:
+        case_num = item.case_number
+        if case_num not in suggestions:
+            # Check if this case number ALREADY exists in production
+            existing_case = db.exec(select(Paper).where(Paper.case_name == case_num)).first()
+            
+            suggestions[case_num] = {
+                "case_number": case_num,
+                "defendant_name": item.defendant_name,
+                "exists_in_production": True if existing_case else False,
+                "production_id": existing_case.id if existing_case else None,
+                "events": []
+            }
+        
+        # Add the specific event data to this group
+        suggestions[case_num]["events"].append({
+            "review_id": item.id,
+            "date": item.date,
+            "type": item.type,
+            "court": item.format
+        })
+    
+    # Convert dict to list for easier frontend mapping
+    return list(suggestions.values())
+
+@app.post("/api/review/approve")
+async def approve_review_group(data: ReviewApprovalRequest, db: Session = Depends(get_db)):
+    # 1. Fetch the review items
+    items = db.exec(select(PaperReview).where(PaperReview.id.in_(data.review_ids))).all()
+    if not items:
+        raise HTTPException(status_code=404, detail="No review items found")
+
+    # 2. Find or Create the production Paper
+    paper = db.exec(select(Paper).where(Paper.case_name == data.case_number)).first()
+    
+    if not paper:
+        # Use data from the first item to create the Paper
+        paper = Paper(
+            case_name=data.case_number,
+            defendant_name=items[0].defendant_name,
+            source_review_id=items[0].id # Linking the Paper to its first source
+        )
+        db.add(paper)
+        db.flush() # Assigns the ID to paper.id without committing yet
+
+    # 3. Create the PaperDates for every item in the group
+    for item in items:
+        new_date = PaperDate(
+            paper_id=paper.id,
+            date=item.date,
+            optional_text=item.type,
+            court_type=item.format,
+            source_review_id=item.id # Keeping the source for every event
+            
+        )
+        db.add(new_date)
+        
+        # 4. Update the status in the staging table
+        item.status = "approved"
+        db.add(item)
+
+    db.commit()
+    return {"status": "success", "paper_id": paper.id, "events_added": len(items)}
