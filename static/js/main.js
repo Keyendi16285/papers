@@ -416,3 +416,82 @@ window.filterDashboard = (filter) => {
     const query = document.getElementById('paper-search-input')?.value || '';
     fetchPapers(filter, query);
 };
+
+// main.js - Add these to the end of your file
+
+async function loadReviewSuggestions() {
+    const container = document.getElementById('review-container');
+    try {
+        const response = await fetch('/api/review/suggestions');
+        const groups = await response.json();
+
+        if (groups.length === 0) {
+            container.innerHTML = `<div class="bg-white p-8 rounded-lg border text-center text-gray-500">No pending reviews found.</div>`;
+            return;
+        }
+
+        container.innerHTML = groups.map(group => `
+            <div class="bg-white border rounded-lg shadow-sm overflow-hidden">
+                <div class="flex items-center justify-between px-6 py-4 bg-slate-50 border-b">
+                    <div>
+                        <span class="text-sm font-semibold text-blue-600 uppercase tracking-wider">
+                            ${group.exists_in_production ? 'Existing Case Found' : 'New Case Suggestion'}
+                        </span>
+                        <h2 class="text-lg font-bold text-slate-900">${group.case_number} - ${group.defendant_name}</h2>
+                    </div>
+                    <button onclick="approveGroup('${group.case_number}', [${group.events.map(e => e.review_id)}])" 
+                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium transition-colors">
+                        Approve All (${group.events.length})
+                    </button>
+                </div>
+                <div class="px-6 py-4">
+                    <table class="w-full text-sm text-left text-gray-500">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2">Date</th>
+                                <th class="px-4 py-2">Event</th>
+                                <th class="px-4 py-2">Court</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${group.events.map(event => `
+                                <tr class="border-b">
+                                    <td class="px-4 py-3 font-medium text-gray-900">${event.date}</td>
+                                    <td class="px-4 py-3">${event.type}</td>
+                                    <td class="px-4 py-3">${event.court}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        container.innerHTML = `<div class="text-red-500 p-4">Error loading data: ${err.message}</div>`;
+    }
+}
+
+async function approveGroup(caseNumber, reviewIds) {
+    if (!confirm(`Are you sure you want to migrate these ${reviewIds.length} items to production?`)) return;
+
+    try {
+        const response = await fetch('/api/review/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                case_number: caseNumber,
+                review_ids: reviewIds
+            })
+        });
+
+        if (response.ok) {
+            alert('Data successfully migrated to production!');
+            loadReviewSuggestions(); // Refresh the list
+        } else {
+            const error = await response.json();
+            alert('Error: ' + error.detail);
+        }
+    } catch (err) {
+        alert('Failed to connect to server: ' + err.message);
+    }
+}

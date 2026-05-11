@@ -17,10 +17,12 @@ engine = create_engine(
 # 3. Create the tables based on your models
 def create_db_and_tables():
     # We import the models here to ensure they are registered before creation
-    from models import Paper, PaperDate
+    from models import Paper, PaperDate, PaperReview
     SQLModel.metadata.create_all(engine)
 
 # 4. Dependency to get a database session for routes
 def get_session():
     with Session(engine) as session:
         yield session
+        
+get_db = get_session
