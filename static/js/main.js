@@ -96,14 +96,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (paperForm) paperForm.onsubmit = handleFormSubmit;
 
     const searchName = urlParams.get('search');
-    
+
     if (searchName) {
         const searchInput = document.getElementById('paper-search-input');
         if (searchInput) {
             searchInput.value = searchName;
             // Trigger the search function to filter the table immediately
             if (typeof fetchPapers === 'function') {
-                fetchPapers(searchName);
+                fetchPapers('all', searchName);
             }
         }
     }
@@ -114,18 +114,18 @@ document.addEventListener('DOMContentLoaded', () => {
 function selectTarget(defendant) {
     const searchInput = document.getElementById('target-search');
     const isCasewide = document.getElementById('add_is_casewide').checked;
-    
+
     // Cache background values
-    window.currentCaseTitle = defendant.case_name_full; 
+    window.currentCaseTitle = defendant.case_name_full;
     window.currentDefendantBaseName = defendant.name;
     window.totalDefendantsInCase = defendant.total_defendants || 1;
-    
+
     window.selectedCaseId = defendant.case_id;
     window.selectedDefendantId = defendant.id;
     window.selectedCaseName = defendant.case_no || defendant.case_number || "N/A";
 
     updateNamingConvention(isCasewide);
-    
+
     document.getElementById('search-results').classList.add('hidden');
 }
 
@@ -149,7 +149,7 @@ function toggleCasewideMode(isCasewide) {
 
 function updateNamingConvention(isCasewide) {
     const searchInput = document.getElementById('target-search');
-    
+
     if (isCasewide) {
         // RULE 1: Casewide -> Use Case Title
         window.selectedDefendantName = window.currentCaseTitle;
@@ -295,7 +295,7 @@ async function fetchPapers(filter = 'all', searchQuery = '') {
     ['all', 'upcoming', 'past'].forEach(f => {
         const btn = document.getElementById(`filter-${f}`);
         if (btn) {
-            btn.className = f === filter 
+            btn.className = f === filter
                 ? "px-3 py-1 text-sm font-medium rounded-md transition-all bg-blue-600 text-white"
                 : "px-3 py-1 text-sm font-medium rounded-md transition-all text-slate-600 hover:bg-slate-50";
         }
@@ -314,7 +314,7 @@ async function fetchPapers(filter = 'all', searchQuery = '') {
         container.innerHTML = papers.map(p => {
             const nearestDate = p.dates?.sort((a, b) => new Date(a.date) - new Date(b.date))[0];
             const casewideBadge = p.is_casewide ? `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black bg-amber-100 text-amber-700 border border-amber-200 uppercase tracking-tighter"><i class="fa-solid fa-users-line mr-1"></i> Casewide</span>` : '';
-            
+
             const linkIcon = nearestDate?.event_link ? `
                 <a href="${nearestDate.event_link}" target="_blank" class="ml-1 text-blue-500 hover:text-blue-700 transition-colors" title="View Order">
                     <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
@@ -365,7 +365,7 @@ async function editPaper(id) {
         document.getElementById('paper-type').value = paper.type;
         document.getElementById('paper-desc').value = paper.description || '';
         document.getElementById('add_is_casewide').checked = paper.is_casewide;
-        
+
         // Setup initial state for re-applying selection logic
         window.currentCaseTitle = paper.case_title || paper.case_name;
         window.currentDefendantBaseName = paper.defendant_name.split(' et al.')[0];
@@ -374,7 +374,7 @@ async function editPaper(id) {
         window.selectedCaseName = paper.case_name;
 
         toggleCasewideMode(paper.is_casewide);
-        
+
         const searchInput = document.getElementById('target-search');
         searchInput.value = paper.defendant_name;
 
@@ -459,6 +459,13 @@ async function loadReviewSuggestions() {
                                     <td class="px-4 py-3 font-medium text-gray-900">${event.date}</td>
                                     <td class="px-4 py-3">${event.type}</td>
                                     <td class="px-4 py-3">${event.court}</td>
+                                    <td class="p-2 text-right">
+                                        <button 
+                                            onclick="approveSingleDate(${event.review_id})"
+                                            class="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
+                                            Approve
+                                        </button>
+                                    </td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -493,5 +500,27 @@ async function approveGroup(caseNumber, reviewIds) {
         }
     } catch (err) {
         alert('Failed to connect to server: ' + err.message);
+    }
+}
+
+async function approveSingleDate(reviewId) {
+    if (!confirm('Approve this specific date?')) return;
+
+    try {
+        const response = await fetch('/api/review/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ review_ids: [reviewId] }) // Send as a list with one ID
+        });
+
+        if (response.ok) {
+            alert('Date approved successfully');
+            loadReviewSuggestions(); // Refresh the list
+        } else {
+            const error = await response.json();
+            alert(`Error: ${error.detail}`);
+        }
+    } catch (err) {
+        console.error('Approval failed:', err);
     }
 }
