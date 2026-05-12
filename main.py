@@ -406,41 +406,41 @@ async def get_review_suggestions(db: Session = Depends(get_db)):
     # Convert dict to list for easier frontend mapping
     return list(suggestions.values())
 
+# 1. Define a request model for the approval
+class ApprovalRequest(BaseModel):
+    review_ids: List[int]
+
 @app.post("/api/review/approve")
-async def approve_review_group(data: ReviewApprovalRequest, db: Session = Depends(get_db)):
-    # 1. Fetch the review items
-    items = db.exec(select(PaperReview).where(PaperReview.id.in_(data.review_ids))).all()
-    if not items:
-        raise HTTPException(status_code=404, detail="No review items found")
+async def approve_reviews(data: ApprovalRequest, db: Session = Depends(get_session)):
+    for rid in data.review_ids:
+        review_item = db.get(PaperReview, rid)
+        if not review_item:
+            continue
+            
+        # Check if production paper exists
+        paper = db.exec(select(Paper).where(Paper.case_name == review_item.case_number)).first()
+        
+        if not paper:
+            paper = Paper(
+                case_name=review_item.case_number,
+                defendant_name=review_item.defendant_name,
+                source_review_id=review_item.id 
+            )
+            db.add(paper)
+            db.commit() 
+            db.refresh(paper)
 
-    # 2. Find or Create the production Paper
-    paper = db.exec(select(Paper).where(Paper.case_name == data.case_number)).first()
-    
-    if not paper:
-        # Use data from the first item to create the Paper
-        paper = Paper(
-            case_name=data.case_number,
-            defendant_name=items[0].defendant_name,
-            source_review_id=items[0].id # Linking the Paper to its first source
-        )
-        db.add(paper)
-        db.flush() # Assigns the ID to paper.id without committing yet
-
-    # 3. Create the PaperDates for every item in the group
-    for item in items:
         new_date = PaperDate(
             paper_id=paper.id,
-            date=item.date,
-            optional_text=item.type,
-            court_type=item.format,
-            source_review_id=item.id # Keeping the source for every event
-            
+            date=review_item.date,
+            optional_text=review_item.type,
+            court_type=review_item.format, # Ensure this matches your model
+            source_review_id=review_item.id 
         )
         db.add(new_date)
         
-        # 4. Update the status in the staging table
-        item.status = "approved"
-        db.add(item)
-
+        review_item.status = "approved"
+        db.add(review_item)
+    
     db.commit()
-    return {"status": "success", "paper_id": paper.id, "events_added": len(items)}
+    return {"status": "success", "message": f"Approved {len(data.review_ids)} items"}

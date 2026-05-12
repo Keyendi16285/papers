@@ -16,18 +16,18 @@ class Paper(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     
     # IDs from CaseTracker/Returnalyzer
-    case_id: int = Field(index=True)
-    defendant_id: int = Field(index=True)
+    case_id: Optional[int] = Field(default=None, index=True)
+    defendant_id: Optional[int] = Field(default=None, index=True)
     
     # Metadata for quick display
-    case_name: str
+    case_name: Optional[str] = None
     case_title: Optional[str] = None
-    defendant_name: str
+    defendant_name: Optional[str] = None
     is_casewide: bool = Field(default=False)
     location_name: Optional[str] = Field(default="Unknown") # For State/County
     total_defendants: int = Field(default=1)
     
-    type: str  # Motion, Pleading, MSJ, etc.
+    type: Optional[str] = None  # Motion, Pleading, MSJ, etc.
     description: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     source_review_id: Optional[int] = Field(default=None, foreign_key="paper_review.id")
@@ -43,8 +43,8 @@ class PaperDate(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     paper_id: int = Field(foreign_key="paper.id")
     
-    date: datetime
-    party: str = Field(nullable=True) # "P" or "D"
+    date: Optional[datetime] = None
+    party: Optional[str] = Field(default=None) # "P" or "D"
     optional_text: Optional[str] = None
     is_completed: bool = Field(default=False)
     court_type: Optional[str] = Field(default=None)
@@ -56,19 +56,19 @@ class PaperDate(SQLModel, table=True):
 # --- SCHEMAS (For API Data Exchange) ---
 
 class DateEntry(SQLModel):
-    date: datetime
-    party: str
+    date: Optional[datetime] = None
+    party: Optional[str] = None
     optional_text: Optional[str] = None
     court_type: Optional[str] = None
     event_link: Optional[str] = None
     
 class PaperCreate(SQLModel):
-    case_id: int
-    defendant_id: int
-    case_name: str
+    case_id: Optional[int] = None
+    defendant_id: Optional[int] = None
+    case_name: Optional[str] = None
     case_title: Optional[str] = None
-    defendant_name: str
-    type: str
+    defendant_name: Optional[str] = None
+    type: Optional[str] = None
     is_casewide: bool = False
     description: Optional[str] = None
     dates: List[DateEntry]
@@ -76,41 +76,41 @@ class PaperCreate(SQLModel):
     
 # Define the "Schema" versions so FastAPI knows how to serialize the relationship
 class PaperDateRead(SQLModel):
-    id: int
-    paper_id: int
-    date: datetime
-    party: str
+    id: Optional[int]
+    paper_id: Optional[int]
+    date: Optional[datetime]
+    party: Optional[str]
     optional_text: Optional[str] = None
     is_completed: bool
     event_link: Optional[str] = None
 
 class PaperRead(SQLModel):
-    id: int
-    case_id: int
-    defendant_id: int
-    case_name: str
+    id: Optional[int]
+    case_id: Optional[int]
+    defendant_id: Optional[int]
+    case_name: Optional[str] = None
     case_title: Optional[str] = None
-    defendant_name: str
+    defendant_name: Optional[str] = None
     is_casewide: bool
     location_name: Optional[str] = None
-    type: str
+    type: Optional[str] = None
     description: Optional[str] = None
     created_at: datetime
     # This is the line that tells FastAPI to look for the "dates" relationship
     dates: List[PaperDateRead] = []
     
 class PaperDateUpdate(SQLModel):
-    date: datetime
-    party: str
+    date: Optional[datetime]
+    party: Optional[str]
     optional_text: Optional[str] = None
     court_type: Optional[str] = None
     event_link: Optional[str] = None
     
 class PaperDateReadWithPaper(SQLModel):
-    id: int
-    paper_id: int
-    date: datetime
-    party: str
+    id: Optional[int]
+    paper_id: Optional[int]
+    date: Optional[datetime]
+    party: Optional[str]
     optional_text: Optional[str] = None
     is_completed: bool
     court_type: Optional[str] = None
