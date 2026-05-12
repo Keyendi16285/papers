@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
             searchInput.value = searchName;
             // Trigger the search function to filter the table immediately
             if (typeof fetchPapers === 'function') {
-                fetchPapers('all', searchName);
+                fetchPapers('upcoming', searchName);
             }
         }
     }
@@ -286,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchPapers('all'); // Initial load
 });
 
-async function fetchPapers(filter = 'all', searchQuery = '') {
+async function fetchPapers(filter = 'upcoming', searchQuery = '') {
     window.currentActiveFilter = filter; // Store current filter for search context
     const container = document.getElementById('active-docket-body');
     if (!container) return;
