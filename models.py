@@ -141,6 +141,41 @@ class PaperReview(SQLModel, table=True):
     timestamp: Optional[datetime] = Field(default_factory=datetime.utcnow)
     status: Optional[str] = Field(default="pending")
     
+class CaseEntry(SQLModel, table=True):
+    __tablename__ = "case-entries"  # Matches your actual database table name
+    
+    id: int | None = Field(default=None, primary_key=True)
+    user_initial: str
+    state: str
+    county: str
+    circuit: Optional[str] = Field(default=None, nullable=True)
+    division: Optional[str] = Field(default=None, nullable=True)
+    envelope_number: int = Field(ge=0)
+    filing_fee_amount: float = Field(ge=0)
+    plaintiff_entry: str
+    # Note: We keep defendant_entry here if it's a general summary,
+    # but specific details now live in the Defendant table.
+    defendant_entry: str
+    case_name: str
+    type: str
+    client_lead: str
+    case_class: str
+    date_filed: date
+    original_number_of_defendants: int = Field(gt=0)
+    current_number_of_defendants: int = Field(gt=0)
+    complaint_specific_total: Optional[int] = Field(
+        default=None, nullable=True)
+
+    service_status: Optional[str] = Field(default="None")
+    settlement: Optional[str] = Field(default="None")
+    discovery_ok: Optional[str] = Field(default="No")
+    discovery: Optional[str] = Field(default="None")
+    case_number: Optional[str] = Field(default="None")
+    settled_amount: Optional[float] = Field(default=None, ge=0)
+    litigation_status_id: int
+    filing_folder_url: str
+    judge: Optional[str] = Field(default=None)
+    
     
 # class PaperReview(SQLModel, table=True):
 #     __tablename__ = "paper_review"
