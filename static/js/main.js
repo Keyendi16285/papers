@@ -338,7 +338,7 @@ async function fetchPapers(filter = 'upcoming', searchQuery = '') {
                     </td>
                     <td class="p-4">
                         <div class="flex items-center gap-1">
-                            <div class="text-xs font-bold text-slate-700">${nearestDate ? new Date(nearestDate.date).toLocaleDateString() : 'N/A'}</div>
+                            <div class="text-xs font-bold text-slate-700">${nearestDate ? new Date(nearestDate.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }) : 'N/A'}</div>
                             ${linkIcon}
                         </div>
                         <div class="text-[9px] text-slate-400 truncate max-w-[120px]">${nearestDate?.optional_text || ''}</div>
@@ -346,7 +346,7 @@ async function fetchPapers(filter = 'upcoming', searchQuery = '') {
                     <td class="p-4 text-center">
                         <div class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-xs font-black">${p.dates.length}</div>
                     </td>
-                    <td class="p-4 text-right">
+                    <td class="p-4 text-center">
                         <button onclick="editPaper(${p.id})" class="p-2 text-slate-400 hover:text-blue-500 transition-colors">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </button>
@@ -435,9 +435,9 @@ async function loadReviewSuggestions() {
                 <div class="flex items-center justify-between px-6 py-4 bg-slate-50 border-b">
                     <div>
                         <span class="text-sm font-semibold text-blue-600 uppercase tracking-wider">
-                            ${group.exists_in_production ? 'Existing Case Found' : 'New Case Suggestion'}
+                            ${group.exists_in_production ? 'Existing Case Found' : 'Event Input Review'}
                         </span>
-                        <h2 class="text-lg font-bold text-slate-900">${group.case_number} - ${group.defendant_name}</h2>
+                        <h2 class="text-lg font-bold text-slate-900">${group.case_number} - ${group.county} - ${(group.defendant_name || group.case_name)}</h2>
                     </div>
                     <button onclick="approveGroup('${group.case_number}', [${group.events.map(e => e.review_id)}])" 
                             class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium transition-colors">
@@ -449,16 +449,23 @@ async function loadReviewSuggestions() {
                         <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
                                 <th class="px-4 py-2">Date</th>
-                                <th class="px-4 py-2">Event</th>
-                                <th class="px-4 py-2">Court</th>
+                                <th class="px-4 py-2">Time</th>
+                                <th class="px-4 py-2">Type</th>
+                                <th class="px-4 py-2">Format</th>
+                                <th class="px-4 py-2">Judge</th>
+                                <th class="px-4 py-2">Source</th>
+                                <th class="px-4 py-2 text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${group.events.map(event => `
                                 <tr class="border-b">
                                     <td class="px-4 py-3 font-medium text-gray-900">${event.date}</td>
+                                    <td class="px-4 py-3 font-medium text-gray-900">${event.time}</td>
                                     <td class="px-4 py-3">${event.type}</td>
                                     <td class="px-4 py-3">${event.court}</td>
+                                    <td class="px-4 py-3">${event.judge || '--'}</td>
+                                    <td class="px-4 py-3">${event.source || '--'}</td>
                                     <td class="p-2 text-right">
                                         <button 
                                             onclick="approveSingleDate(${event.review_id})"

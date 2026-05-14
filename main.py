@@ -13,7 +13,7 @@ import os
 import httpx
 
 from database import engine, create_db_and_tables, get_session, get_db
-from models import Paper, PaperDate, PaperCreate, DateEntry, PaperDateReadWithPaper, PaperDateUpdate, PaperRead, PaperReview
+from models import CaseEntry, Paper, PaperDate, PaperCreate, DateEntry, PaperDateReadWithPaper, PaperDateUpdate, PaperRead, PaperReview
 
 CASETRACKER_URL = os.getenv("CASETRACKER_URL", "http://host.docker.internal:8001")
 
@@ -385,11 +385,13 @@ async def get_review_suggestions(db: Session = Depends(get_db)):
         case_num = item.case_number
         if case_num not in suggestions:
             # Check if this case number ALREADY exists in production
-            existing_case = db.exec(select(Paper).where(Paper.case_name == case_num)).first()
+            existing_case = db.exec(select(CaseEntry).where(CaseEntry.case_number == case_num)).first()
             
             suggestions[case_num] = {
                 "case_number": case_num,
-                "defendant_name": item.defendant_name,
+                "case_name": item.case_name,
+                "county": item.county,
+                "state": item.state,
                 "exists_in_production": True if existing_case else False,
                 "production_id": existing_case.id if existing_case else None,
                 "events": []
@@ -397,10 +399,14 @@ async def get_review_suggestions(db: Session = Depends(get_db)):
         
         # Add the specific event data to this group
         suggestions[case_num]["events"].append({
+            "defendant_name": item.defendant_name,
             "review_id": item.id,
             "date": item.date,
             "type": item.type,
-            "court": item.format
+            "court": item.format,
+            "judge": item.judge,
+            "time": item.time,
+            "source": item.source,
         })
     
     # Convert dict to list for easier frontend mapping
@@ -424,7 +430,8 @@ async def approve_reviews(data: ApprovalRequest, db: Session = Depends(get_sessi
             paper = Paper(
                 case_name=review_item.case_number,
                 defendant_name=review_item.defendant_name,
-                source_review_id=review_item.id 
+                source_review_id=review_item.id,
+                
             )
             db.add(paper)
             db.commit() 
@@ -435,7 +442,8 @@ async def approve_reviews(data: ApprovalRequest, db: Session = Depends(get_sessi
             date=review_item.date,
             optional_text=review_item.type,
             court_type=review_item.format, # Ensure this matches your model
-            source_review_id=review_item.id 
+            source_review_id=review_item.id, 
+            event_link=review_item.event_link
         )
         db.add(new_date)
         
