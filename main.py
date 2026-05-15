@@ -374,9 +374,9 @@ async def read_review():
         return f.read()
 
 @app.get("/api/review/suggestions")
-async def get_review_suggestions(db: Session = Depends(get_db)):
+async def get_review_suggestions(status: str = "pending", db: Session = Depends(get_db)):
     # 1. Fetch only 'pending' items from the staging table
-    query = select(PaperReview).where(PaperReview.status == "pending")
+    query = select(PaperReview).where(PaperReview.status == status)
     items = db.exec(query).all()
     
     # 2. Group them by case_number
