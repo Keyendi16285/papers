@@ -51,6 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     fetchPapers();
     addDateRow();
+    loadReviewSuggestions('pending');
 
     // Search Logic
     const searchInput = document.getElementById('target-search');
@@ -419,19 +420,97 @@ window.filterDashboard = (filter) => {
 
 // main.js - Add these to the end of your file
 
-async function loadReviewSuggestions() {
+// async function loadReviewSuggestions(status = 'pending') {
+//     const container = document.getElementById('review-container');
+//     try {
+//         const response = await fetch(`/api/review/suggestions?status=${status}`);
+//         if (!response.ok) throw new Error("Failed to fetch suggestions");
+
+//         const groups = await response.json();
+
+//         if (groups.length === 0) {
+//             const message = status === 'pending' ? "No pending reviews found." : "No archived records found.";
+//             container.innerHTML = `<div class="bg-white p-8 rounded-lg border text-center text-gray-500">${message}</div>`;
+//             return;
+//         }
+
+//         container.innerHTML = groups.map(group => `
+//             <div class="bg-white border rounded-lg shadow-sm overflow-hidden">
+//                 <div class="flex items-center justify-between px-6 py-4 bg-slate-50 border-b">
+//                     <div>
+//                         <span class="text-sm font-semibold text-blue-600 uppercase tracking-wider">
+//                             ${group.exists_in_production ? 'Existing Case Found' : 'Event Input Review'}
+//                         </span>
+//                         <h2 class="text-lg font-bold text-slate-900">${group.case_number} - ${group.county} - ${(group.defendant_name || group.case_name)}</h2>
+//                     </div>
+//                     <button onclick="approveGroup('${group.case_number}', [${group.events.map(e => e.review_id)}])" 
+//                             class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium transition-colors">
+//                         Approve All (${group.events.length})
+//                     </button>
+//                 </div>
+//                 <div class="px-6 py-4">
+//                     <table class="w-full text-sm text-left text-gray-500">
+//                         <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+//                             <tr>
+//                                 <th class="px-4 py-2">Date</th>
+//                                 <th class="px-4 py-2">Time</th>
+//                                 <th class="px-4 py-2">Type</th>
+//                                 <th class="px-4 py-2">Format</th>
+//                                 <th class="px-4 py-2">Judge</th>
+//                                 <th class="px-4 py-2">Source</th>
+//                                 <th class="px-4 py-2 text-right">Action</th>
+//                             </tr>
+//                         </thead>
+//                         <tbody>
+//                             ${group.events.map(event => `
+//                                 <tr class="border-b">
+//                                     <td class="px-4 py-3 font-medium text-gray-900">${event.date}</td>
+//                                     <td class="px-4 py-3 font-medium text-gray-900">${event.time}</td>
+//                                     <td class="px-4 py-3">${event.type}</td>
+//                                     <td class="px-4 py-3">${event.court}</td>
+//                                     <td class="px-4 py-3">${event.judge || '--'}</td>
+//                                     <td class="px-4 py-3">${event.source || '--'}</td>
+//                                     <td class="p-2 text-right">
+//                                         <button 
+//                                             onclick="approveSingleDate(${event.review_id})"
+//                                             class="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
+//                                             Approve
+//                                         </button>
+//                                     </td>
+//                                 </tr>
+//                             `).join('')}
+//                         </tbody>
+//                     </table>
+//                 </div>
+//             </div>
+//         `).join('');
+//     } catch (err) {
+//         container.innerHTML = `<div class="text-red-500 p-4">Error loading data: ${err.message}</div>`;
+//     }
+// }
+
+async function loadReviewSuggestions(status = 'pending') {
     const container = document.getElementById('review-container');
+
+    if (!container) return;
+    
     try {
-        const response = await fetch('/api/review/suggestions');
+        // FIX: Use authFetch instead of standard fetch to include the access token 
+        const response = await authFetch(`/api/review/suggestions?status=${status}`);
+        
+        if (!response.ok) throw new Error("Failed to fetch suggestions");
+
         const groups = await response.json();
 
         if (groups.length === 0) {
-            container.innerHTML = `<div class="bg-white p-8 rounded-lg border text-center text-gray-500">No pending reviews found.</div>`;
+            // Correctly handles dynamic messaging based on the status 
+            const message = status === 'pending' ? "No pending reviews found." : "No archived records found.";
+            container.innerHTML = `<div class="bg-white p-8 rounded-lg border text-center text-gray-500">${message}</div>`;
             return;
         }
 
         container.innerHTML = groups.map(group => `
-            <div class="bg-white border rounded-lg shadow-sm overflow-hidden">
+            <div class="bg-white border rounded-lg shadow-sm overflow-hidden mb-6">
                 <div class="flex items-center justify-between px-6 py-4 bg-slate-50 border-b">
                     <div>
                         <span class="text-sm font-semibold text-blue-600 uppercase tracking-wider">
@@ -439,10 +518,11 @@ async function loadReviewSuggestions() {
                         </span>
                         <h2 class="text-lg font-bold text-slate-900">${group.case_number} - ${group.county} - ${(group.defendant_name || group.case_name)}</h2>
                     </div>
+                    ${status === 'pending' ? `
                     <button onclick="approveGroup('${group.case_number}', [${group.events.map(e => e.review_id)}])" 
                             class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium transition-colors">
                         Approve All (${group.events.length})
-                    </button>
+                    </button>` : ''}
                 </div>
                 <div class="px-6 py-4">
                     <table class="w-full text-sm text-left text-gray-500">
@@ -454,7 +534,7 @@ async function loadReviewSuggestions() {
                                 <th class="px-4 py-2">Format</th>
                                 <th class="px-4 py-2">Judge</th>
                                 <th class="px-4 py-2">Source</th>
-                                <th class="px-4 py-2 text-right">Action</th>
+                                ${status === 'pending' ? '<th class="px-4 py-2 text-right">Action</th>' : ''}
                             </tr>
                         </thead>
                         <tbody>
@@ -466,13 +546,14 @@ async function loadReviewSuggestions() {
                                     <td class="px-4 py-3">${event.court}</td>
                                     <td class="px-4 py-3">${event.judge || '--'}</td>
                                     <td class="px-4 py-3">${event.source || '--'}</td>
+                                    ${status === 'pending' ? `
                                     <td class="p-2 text-right">
                                         <button 
                                             onclick="approveSingleDate(${event.review_id})"
                                             class="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
                                             Approve
                                         </button>
-                                    </td>
+                                    </td>` : ''}
                                 </tr>
                             `).join('')}
                         </tbody>
