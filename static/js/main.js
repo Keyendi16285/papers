@@ -504,12 +504,21 @@ async function loadReviewSuggestions(status = 'pending') {
 
         if (groups.length === 0) {
             // Correctly handles dynamic messaging based on the status 
-            const message = status === 'pending' ? "No pending reviews found." : "No archived records found.";
+            let message = "No pending reviews found.";
+            if (status === 'approved') {
+                message = "No approved records found.";
+            } else if (status === 'rejected') {
+                message = "No archived records found.";
+            }
             container.innerHTML = `<div class="bg-white p-8 rounded-lg border text-center text-gray-500">${message}</div>`;
             return;
         }
 
-        container.innerHTML = groups.map(group => `
+        container.innerHTML = groups.map(group => {
+            // Pre-compile an array of all review IDs in this group for mass actions
+            const allReviewIds = group.events.map(e => e.review_id);
+
+            return `
             <div class="bg-white border rounded-lg shadow-sm overflow-hidden mb-6">
                 <div class="flex items-center justify-between px-6 py-4 bg-slate-50 border-b">
                     <div>
@@ -519,10 +528,16 @@ async function loadReviewSuggestions(status = 'pending') {
                         <h2 class="text-lg font-bold text-slate-900">${group.case_number} - ${group.county} - ${(group.defendant_name || group.case_name)}</h2>
                     </div>
                     ${status === 'pending' ? `
-                    <button onclick="approveGroup('${group.case_number}', [${group.events.map(e => e.review_id)}])" 
-                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium transition-colors">
-                        Approve All (${group.events.length})
-                    </button>` : ''}
+                    <div class="flex items-center gap-2">
+                        <button onclick="approveGroup('${group.case_number}', [${allReviewIds}])" 
+                                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium transition-colors">
+                            Approve All (${group.events.length})
+                        </button>
+                        <button onclick="archiveGroup('${group.case_number}', [${allReviewIds}])" 
+                                class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md font-medium transition-colors">
+                            Archive All (${group.events.length})
+                        </button>
+                    </div>` : ''}
                 </div>
                 <div class="px-6 py-4">
                     <table class="w-full text-sm text-left text-gray-500">
@@ -547,11 +562,16 @@ async function loadReviewSuggestions(status = 'pending') {
                                     <td class="px-4 py-3">${event.judge || '--'}</td>
                                     <td class="px-4 py-3">${event.source || '--'}</td>
                                     ${status === 'pending' ? `
-                                    <td class="p-2 text-right">
+                                    <td class="p-2 text-right flex justify-end gap-1">
                                         <button 
                                             onclick="approveSingleDate(${event.review_id})"
                                             class="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
                                             Approve
+                                        </button>
+                                        <button 
+                                            onclick="archiveSingleDate(${event.review_id})"
+                                            class="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors">
+                                            Archive
                                         </button>
                                     </td>` : ''}
                                 </tr>
@@ -560,7 +580,8 @@ async function loadReviewSuggestions(status = 'pending') {
                     </table>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
     } catch (err) {
         container.innerHTML = `<div class="text-red-500 p-4">Error loading data: ${err.message}</div>`;
     }
@@ -611,4 +632,24 @@ async function approveSingleDate(reviewId) {
     } catch (err) {
         console.error('Approval failed:', err);
     }
+}
+
+async function archiveSingleDate(reviewId) {
+    if(!confirm("Are you sure you want to archive this record?")) return;
+    const response = await authFetch('/api/review/reject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ review_ids: [reviewId] })
+    });
+    if(response.ok) loadReviewSuggestions('pending');
+}
+
+async function archiveGroup(caseNumber, reviewIds) {
+    if(!confirm(`Are you sure you want to archive all records for case ${caseNumber}?`)) return;
+    const response = await authFetch('/api/review/reject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ review_ids: reviewIds })
+    });
+    if(response.ok) loadReviewSuggestions('pending');
 }
