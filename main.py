@@ -452,3 +452,21 @@ async def approve_reviews(data: ApprovalRequest, db: Session = Depends(get_sessi
     
     db.commit()
     return {"status": "success", "message": f"Approved {len(data.review_ids)} items"}
+
+@app.post("/api/review/reject")
+async def reject_reviews(data: ApprovalRequest, db: Session = Depends(get_session)):
+    rejected_count = 0
+    
+    for rid in data.review_ids:
+        review_item = db.get(PaperReview, rid)
+        if not review_item:
+            continue
+            
+        # Change status to rejected so they fall out of pending queue 
+        # and display under the newly added "Archived Records" button
+        review_item.status = "rejected"
+        db.add(review_item)
+        rejected_count += 1
+    
+    db.commit()
+    return {"status": "success", "message": f"Archived/Rejected {rejected_count} items"}
