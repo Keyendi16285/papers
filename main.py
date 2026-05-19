@@ -334,7 +334,13 @@ async def get_upcoming_dates(session: Session = Depends(get_session)):
                             else:
                                 d.paper.location_name = st or co or "Unknown"
                         else:
-                            d.paper.location_name = "No Case Match"
+                            # d.paper.location_name = "No Case Match"
+                            statement = select(Paper).where(Paper.case_name == d.paper.case_name)
+                            paperResult = session.exec(statement).first()
+                            if paperResult and paperResult.location_name:
+                                d.paper.location_name = paperResult.location_name
+                            else:
+                                d.paper.location_name = "No Case Match"
                     else:
                         d.paper.location_name = "Unknown"
                 except Exception as e:
@@ -355,17 +361,41 @@ async def update_paper_date(
         raise HTTPException(status_code=404, detail="Deadline not found")
     
     # 2. Update only the fields provided in the modal
-    db_date.date = date_update.date
-    db_date.party = date_update.party
-    db_date.optional_text = date_update.optional_text
-    db_date.court_type = date_update.court_type
-    db_date.event_link = date_update.event_link
+    if date_update.date is not None:
+        db_date.date = date_update.date
+    if date_update.party is not None:
+        db_date.party = date_update.party
+    if date_update.optional_text is not None:
+        db_date.optional_text = date_update.optional_text
+    if date_update.court_type is not None:
+        db_date.court_type = date_update.court_type
+    if date_update.event_link is not None:
+        db_date.event_link = date_update.event_link
     
     # 3. Save to database
     session.add(db_date)
+    # session.commit()
+    # session.refresh(db_date)
+    
+    if db_date.paper_id:
+        db_paper = session.get(Paper, db_date.paper_id)
+        if db_paper:
+            # Check and map the incoming dashboard fields to the paper record
+            if hasattr(date_update, "defendant_name") and date_update.defendant_name is not None:
+                db_paper.defendant_name = date_update.defendant_name
+            if hasattr(date_update, "case_title") and date_update.case_title is not None:
+                db_paper.case_title = date_update.case_title
+            if hasattr(date_update, "type") and date_update.type is not None:
+                db_paper.type = date_update.type
+            if hasattr(date_update, "description") and date_update.description is not None:
+                db_paper.description = date_update.description
+            if hasattr(date_update, "location_name") and date_update.location_name is not None:
+                db_paper.location_name = date_update.location_name
+                
+            session.add(db_paper)
+            
     session.commit()
     session.refresh(db_date)
-    
     return db_date
 
 @app.get("/review.html", response_class=HTMLResponse)
