@@ -112,9 +112,48 @@
                 <input type="hidden" id="edit-id">
 
                 <div>
+                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Defendant Name</label>
+                    <input type="text" id="edit-defendant-name"
+                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Case Name</label>
+                    <input type="text" id="edit-case-name"
+                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div>
                     <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Deadline Date/Time</label>
                     <input type="datetime-local" id="edit-date"
                         class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">State / County</label>
+                    <input type="text" id="edit-location-name"
+                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Event Note</label>
+                    <textarea id="edit-description" rows="3"
+                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Paper Type</label>
+                    <select id="edit-paper-type"
+                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="Pleading">Pleading</option>
+                        <option value="Motion">Motion</option>
+                        <option value="MSJ">MSJ</option>
+                        <option value="Courtesy Copies">Courtesy Copies</option>
+                        <option value="Fee Petition">Fee Petition</option>
+                        <option value="Discovery Req">Discovery Req</option>
+                        <option value="Discovery Resp">Discovery Resp</option>
+                        <option value="Court (Only)">Court (Only)</option>
+                    </select>
                 </div>
 
                 <div>
@@ -129,7 +168,7 @@
                 </div>
 
                 <div id="edit-court-type-container" class="hidden">
-                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Hearing Location</label>
+                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Court Type</label>
                     <select id="edit-court-type"
                         class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-purple-500">
                         <option value="">N/A</option>
@@ -145,6 +184,13 @@
                     <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Event Description</label>
                     <input type="text" id="edit-text"
                         class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Event Link</label>
+                    <input type="url" id="edit-event-link"
+                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="https://...">
                 </div>
 
                 <div class="pt-4">

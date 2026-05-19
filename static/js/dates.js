@@ -49,7 +49,11 @@ async function fetchAllDates(searchQuery = '') {
             return;
         }
 
+        activeDatesRegistry = {};
+
         body.innerHTML = dates.map(d => {
+            activeDatesRegistry[d.id] = d;
+
             const dateObj = new Date(d.date);
             const isPast = dateObj < new Date();
             
@@ -121,11 +125,22 @@ async function fetchAllDates(searchQuery = '') {
     }
 }
 
-function openEditModal(id, date, party, text) {
+function openEditModal(id) {
+    const dateInfo = activeDatesRegistry[id];
+    if (!dateInfo) return;
     document.getElementById('edit-id').value = id;
-    document.getElementById('edit-date').value = date.slice(0, 16);
-    document.getElementById('edit-party').value = party;
-    document.getElementById('edit-text').value = text;
+    document.getElementById('edit-date').value = dateInfo.date.slice(0, 16);
+    document.getElementById('edit-party').value = dateInfo.party;
+    document.getElementById('edit-text').value = dateInfo.optional_text || '';
+
+    document.getElementById('edit-court-type').value = dateInfo.court_type || '';
+    document.getElementById('edit-defendant-name').value = dateInfo.paper?.defendant_name || '';
+    document.getElementById('edit-case-name').value = dateInfo.paper?.case_title || '';
+    document.getElementById('edit-paper-type').value = dateInfo.paper?.type || '';
+    document.getElementById('edit-description').value = dateInfo.paper?.description || '';
+    document.getElementById('edit-location-name').value = dateInfo.paper?.location_name || '';
+    document.getElementById('edit-event-link').value = dateInfo.paper?.event_link || '';
+
     document.getElementById('edit-modal').classList.remove('hidden');
 }
 
@@ -133,25 +148,40 @@ function closeModal() {
     document.getElementById('edit-modal').classList.add('hidden');
 }
 
-document.getElementById('edit-date-form').onsubmit = async (e) => {
-    e.preventDefault();
-    const id = document.getElementById('edit-id').value;
-    const payload = {
-        date: document.getElementById('edit-date').value,
-        party: document.getElementById('edit-party').value,
-        optional_text: document.getElementById('edit-text').value
-    };
+if (document.getElementById('edit-date-form')) {
+    document.getElementById('edit-date-form').onsubmit = async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('edit-id').value;
+        
+        // Assemble combined update payload mapping back to backend schema configurations
+        const payload = {
+            date: document.getElementById('edit-date').value,
+            party: document.getElementById('edit-party').value,
+            optional_text: document.getElementById('edit-text').value,
+            court_type: document.getElementById('edit-court-type').value,
+            defendant_name: document.getElementById('edit-defendant-name').value,
+            case_title: document.getElementById('edit-case-name').value,
+            type: document.getElementById('edit-paper-type').value,
+            description: document.getElementById('edit-description').value,
+            location_name: document.getElementById('edit-location-name').value,
+            event_link: document.getElementById('edit-event-link').value
+        };
 
-    try {
-        const response = await authFetch(`/api/papers/dates/${id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        try {
+            const response = await authFetch(`/api/papers/dates/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-        if (response.ok) {
-            closeModal();
-            fetchAllDates();
+            if (response.ok) {
+                closeModal();
+                fetchAllDates(document.getElementById('paper-search-input')?.value || '');
+            } else {
+                console.error("Failed to update date item parameters.");
+            }
+        } catch (err) { 
+            console.error(err); 
         }
-    } catch (err) { console.error(err); }
-};
+    };
+}

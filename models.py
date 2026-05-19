@@ -83,6 +83,8 @@ class PaperDateRead(SQLModel):
     optional_text: Optional[str] = None
     is_completed: bool
     event_link: Optional[str] = None
+    court_type: Optional[str] 
+    source_review_id: Optional[int] 
 
 class PaperRead(SQLModel):
     id: Optional[int]
@@ -106,6 +108,12 @@ class PaperDateUpdate(SQLModel):
     court_type: Optional[str] = None
     event_link: Optional[str] = None
     
+    defendant_name: Optional[str] = None
+    case_title: Optional[str] = None
+    type: Optional[str] = None
+    description: Optional[str] = None
+    location_name: Optional[str] = None
+
 class PaperDateReadWithPaper(SQLModel):
     id: Optional[int]
     paper_id: Optional[int]
