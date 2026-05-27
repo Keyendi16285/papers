@@ -501,3 +501,20 @@ async def reject_reviews(data: ApprovalRequest, db: Session = Depends(get_sessio
     
     db.commit()
     return {"status": "success", "message": f"Archived/Rejected {rejected_count} items"}
+
+@app.post("/api/review/unarchive")
+async def unarchive_reviews(data: ApprovalRequest, db: Session = Depends(get_session)):
+    unarchived_count = 0
+    
+    for rid in data.review_ids:
+        review_item = db.get(PaperReview, rid)
+        if not review_item:
+            continue
+            
+        # Change status back to pending so they reappear in the active review queue
+        review_item.status = "pending"
+        db.add(review_item)
+        unarchived_count += 1
+    
+    db.commit()
+    return {"status": "success", "message": f"Moved {unarchived_count} items back to pending queue"}

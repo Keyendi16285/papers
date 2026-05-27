@@ -538,6 +538,13 @@ async function loadReviewSuggestions(status = 'pending') {
                             Archive All (${group.events.length})
                         </button>
                     </div>` : ''}
+                    ${status === 'rejected' ? `
+                    <div class="flex items-center gap-2">
+                        <button onclick="unarchiveGroup('${group.case_number}', [${allReviewIds}])" 
+                                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium transition-colors">
+                            Unarchive All (${group.events.length})
+                        </button>
+                    </div>` : ''}
                 </div>
                 <div class="px-7 py-4">
                     <table class="w-full text-sm text-left text-gray-500">
@@ -580,6 +587,14 @@ async function loadReviewSuggestions(status = 'pending') {
                                             onclick="archiveSingleDate(${event.review_id})"
                                             class="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors">
                                             Archive
+                                        </button>
+                                    </td>` : ''}
+                                    ${status === 'rejected' ? `
+                                    <td class="p-2 text-right flex justify-end gap-1">
+                                        <button 
+                                            onclick="unarchiveSingleDate(${event.review_id})"
+                                            class="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
+                                            Unarchive
                                         </button>
                                     </td>` : ''}
                                 </tr>
@@ -660,4 +675,30 @@ async function archiveGroup(caseNumber, reviewIds) {
         body: JSON.stringify({ review_ids: reviewIds })
     });
     if (response.ok) loadReviewSuggestions('pending');
+}
+
+async function unarchiveSingleDate(reviewId) {
+    if (!confirm("Are you sure you want to unarchive this record?")) return;
+    const response = await authFetch('/api/review/unarchive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ review_ids: [reviewId] })
+    });
+    if (response.ok) {
+        // Reloads the active view state to remove the processed record
+        loadReviewSuggestions('rejected');
+    }
+}
+
+async function unarchiveGroup(caseNumber, reviewIds) {
+    if (!confirm(`Are you sure you want to unarchive all records for case ${caseNumber}?`)) return;
+    const response = await authFetch('/api/review/unarchive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ review_ids: reviewIds })
+    });
+    if (response.ok) {
+        // Reloads the active view state to remove the processed group
+        loadReviewSuggestions('rejected');
+    }
 }
