@@ -437,6 +437,7 @@ async def get_review_suggestions(status: str = "pending", db: Session = Depends(
             "judge": item.judge,
             "time": item.time,
             "source": item.source,
+            "event_link": item.event_link
         })
     
     # Convert dict to list for easier frontend mapping

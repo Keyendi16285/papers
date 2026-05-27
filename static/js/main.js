@@ -493,11 +493,11 @@ async function loadReviewSuggestions(status = 'pending') {
     const container = document.getElementById('review-container');
 
     if (!container) return;
-    
+
     try {
         // FIX: Use authFetch instead of standard fetch to include the access token 
         const response = await authFetch(`/api/review/suggestions?status=${status}`);
-        
+
         if (!response.ok) throw new Error("Failed to fetch suggestions");
 
         const groups = await response.json();
@@ -539,7 +539,7 @@ async function loadReviewSuggestions(status = 'pending') {
                         </button>
                     </div>` : ''}
                 </div>
-                <div class="px-6 py-4">
+                <div class="px-7 py-4">
                     <table class="w-full text-sm text-left text-gray-500">
                         <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                             <tr>
@@ -549,6 +549,7 @@ async function loadReviewSuggestions(status = 'pending') {
                                 <th class="px-4 py-2">Format</th>
                                 <th class="px-4 py-2">Judge</th>
                                 <th class="px-4 py-2">Source</th>
+                                <th class="px-4 py-2">Event Link</th>
                                 ${status === 'pending' ? '<th class="px-4 py-2 text-right">Action</th>' : ''}
                             </tr>
                         </thead>
@@ -561,6 +562,13 @@ async function loadReviewSuggestions(status = 'pending') {
                                     <td class="px-4 py-3">${event.court}</td>
                                     <td class="px-4 py-3">${event.judge || '--'}</td>
                                     <td class="px-4 py-3">${event.source || '--'}</td>
+                                    <td class="px-4 py-3">${event.event_link
+                                        ? `<a href="${event.event_link}" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-700 underline inline-flex items-center gap-1">
+                                        View Link
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                    </a>`
+                                        : '<span class="text-slate-400 italic">No Link Available</span>'
+                                    }</td>
                                     ${status === 'pending' ? `
                                     <td class="p-2 text-right flex justify-end gap-1">
                                         <button 
@@ -635,21 +643,21 @@ async function approveSingleDate(reviewId) {
 }
 
 async function archiveSingleDate(reviewId) {
-    if(!confirm("Are you sure you want to archive this record?")) return;
+    if (!confirm("Are you sure you want to archive this record?")) return;
     const response = await authFetch('/api/review/reject', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ review_ids: [reviewId] })
     });
-    if(response.ok) loadReviewSuggestions('pending');
+    if (response.ok) loadReviewSuggestions('pending');
 }
 
 async function archiveGroup(caseNumber, reviewIds) {
-    if(!confirm(`Are you sure you want to archive all records for case ${caseNumber}?`)) return;
+    if (!confirm(`Are you sure you want to archive all records for case ${caseNumber}?`)) return;
     const response = await authFetch('/api/review/reject', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ review_ids: reviewIds })
     });
-    if(response.ok) loadReviewSuggestions('pending');
+    if (response.ok) loadReviewSuggestions('pending');
 }
