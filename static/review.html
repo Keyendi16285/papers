@@ -15,6 +15,19 @@
     </nav>
 
     <main class="max-w-5xl mx-auto px-4">
+
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div class="flex items-center space-x-2">
+                <label for="case-match-filter" class="text-sm font-medium text-slate-600">Case Matching:</label>
+                <select id="case-match-filter" onchange="filterReviewQueue()"
+                    class="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="all">All Cases</option>
+                    <option value="matched">Matched (Existing Case Found)</option>
+                    <option value="unmatched">Unmatched (Event Input Review)</option>
+                </select>
+            </div>
+
+        </div>
         <div class="flex justify-between items-center mb-4">
 
             <div class="flex space-x-2">
@@ -30,11 +43,13 @@
                 class="flex items-center px-4 py-2 text-sm font-medium text-white bg-slate-600 rounded-lg hover:bg-slate-700 transition-colors shadow-sm">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        d="M10 19l-7-7m0 0l7-7m-7 7h18">
+                    </path>
                 </svg>
                 Back to Dashboard
             </a>
         </div>
+
         <div id="review-container" class="space-y-4">
             <div class="text-center py-12 text-gray-500">Loading suggestions...</div>
         </div>
