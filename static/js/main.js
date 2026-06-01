@@ -655,3 +655,9 @@ async function unarchiveGroup(caseNumber, reviewIds) {
         loadReviewSuggestions('rejected');
     }
 }
+
+window.viewPaperDetails = function(id, defendantName = '') {
+    // Redirects to your main page/dashboard and triggers the existing search filter automatically
+    const searchParam = defendantName ? `?search=${encodeURIComponent(defendantName)}` : '';
+    window.location.href = `/${searchParam}`; 
+};
