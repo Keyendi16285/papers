@@ -78,6 +78,10 @@ async def read_index():
 async def read_dates():
     return FileResponse("static/dates.html")
 
+@app.get("/travel")
+async def read_travel():
+    return FileResponse("static/travel.html")
+
 # --- API ROUTES ---
 
 @app.post("/api/papers", response_model=Paper)
@@ -518,3 +522,56 @@ async def unarchive_reviews(data: ApprovalRequest, db: Session = Depends(get_ses
     
     db.commit()
     return {"status": "success", "message": f"Moved {unarchived_count} items back to pending queue"}
+
+import logging
+
+# Initialize a standard logger to catch internal database errors
+logger = logging.getLogger("uvicorn.error")
+
+@app.get("/api/travel")
+async def get_travel_docket(q: Optional[str] = None, db: Session = Depends(get_session)):
+    """
+    Fetches only 'In-person' court events safely and maps them to their 
+    parent case profiles for travel management tracking.
+    """
+    try:
+        # Query PaperDates directly to filter by 'In-person' type
+        query = select(PaperDate).where(PaperDate.court_type == "In-Person")
+        
+        # Apply global dashboard search filtering if a query is present
+        if q:
+            query = query.join(Paper).where(
+                (Paper.case_name.contains(q)) | 
+                (Paper.defendant_name.contains(q))
+            )
+            
+        date_records = db.exec(query).all()
+        results = []
+        
+        for d_record in date_records:
+            # Safely fetch parent whether relationship attribute or ID lookup is used
+            parent = getattr(d_record, 'paper', None)
+            if not parent and hasattr(d_record, 'paper_id'):
+                parent = db.get(Paper, d_record.paper_id)
+                
+            if not parent:
+                logger.warning(f"Skipping PaperDate ID {d_record.id}: No parent Paper profile found.")
+                continue
+                
+            # Safely cast objects to clean primitive data values to ensure 100% successful serialization
+            results.append({
+                "id": int(parent.id),
+                "case_name": str(parent.case_name) if parent.case_name else "--",
+                "case_title": str(parent.case_title) if parent.case_title else "",
+                "defendant_name": str(parent.defendant_name) if parent.defendant_name else "N/A",
+                "type": str(parent.type) if parent.type else "Filing / Event",
+                "party": str(d_record.party) if hasattr(d_record, 'party') and d_record.party else 'D',
+                "nearest_date": d_record.date.isoformat() if d_record.date else None,
+                "date_count": 1
+            })
+            
+        return results
+
+    except Exception as e:
+        logger.error(f"Travel Route Engine Exception Raised: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal database formatting error: {str(e)}")
