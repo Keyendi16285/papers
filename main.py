@@ -9,6 +9,7 @@ from datetime import datetime
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from sqlalchemy.orm import selectinload
+from sqlalchemy import asc
 import os
 import httpx
 
@@ -531,14 +532,23 @@ logger = logging.getLogger("uvicorn.error")
 @app.get("/api/travel")
 async def get_travel_docket(q: Optional[str] = None, db: Session = Depends(get_session)):
     """
-    Fetches only 'In-person' court events safely and maps them to their 
-    parent case profiles for travel management tracking.
+    Fetches only UPCOMING 'In-person' court events, sorted chronologically
+    from nearest to farthest date, and maps them to their parent case profiles.
     """
     try:
-        # Query PaperDates directly to filter by 'In-person' type
-        query = select(PaperDate).where(PaperDate.court_type == "In-Person")
+        current_time = datetime.now()
+        print(f"DEBUG: Fetching travel docket with search query: '{q}' at {current_time.isoformat()}")
         
-        # Apply global dashboard search filtering if a query is present
+        # 1. Base Query: Filter for 'In-Person' AND only look at future dates
+        # 2. Sorting Logic: Order by date from nearest to farthest (ASC)
+        query = (
+            select(PaperDate)
+            .where(PaperDate.court_type == "In-Person")
+            .where(PaperDate.date >= current_time)
+            .order_by(asc(PaperDate.date))
+        )
+        
+        # Apply dashboard search filtering if a query is present
         if q:
             query = query.join(Paper).where(
                 (Paper.case_name.contains(q)) | 
@@ -546,10 +556,10 @@ async def get_travel_docket(q: Optional[str] = None, db: Session = Depends(get_s
             )
             
         date_records = db.exec(query).all()
+        print(f"DEBUG: Retrieved {len(date_records)} 'In-Person' events from the database.")
         results = []
         
         for d_record in date_records:
-            # Safely fetch parent whether relationship attribute or ID lookup is used
             parent = getattr(d_record, 'paper', None)
             if not parent and hasattr(d_record, 'paper_id'):
                 parent = db.get(Paper, d_record.paper_id)
@@ -558,7 +568,6 @@ async def get_travel_docket(q: Optional[str] = None, db: Session = Depends(get_s
                 logger.warning(f"Skipping PaperDate ID {d_record.id}: No parent Paper profile found.")
                 continue
                 
-            # Safely cast objects to clean primitive data values to ensure 100% successful serialization
             results.append({
                 "id": int(parent.id),
                 "case_name": str(parent.case_name) if parent.case_name else "--",
@@ -567,11 +576,12 @@ async def get_travel_docket(q: Optional[str] = None, db: Session = Depends(get_s
                 "type": str(parent.type) if parent.type else "Filing / Event",
                 "party": str(d_record.party) if hasattr(d_record, 'party') and d_record.party else 'D',
                 "nearest_date": d_record.date.isoformat() if d_record.date else None,
-                "date_count": 1
+                "date_count": 1,
+                "location_name": str(parent.location_name) if hasattr(parent, 'location_name') and parent.location_name else None
             })
             
         return results
 
     except Exception as e:
         logger.error(f"Travel Route Engine Exception Raised: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal database formatting error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal database processing error: {str(e)}")
