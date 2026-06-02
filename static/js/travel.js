@@ -132,9 +132,14 @@ function buildTravelRowHtml(paper) {
     return `
         <tr class="border-b border-slate-50 hover:bg-slate-50 transition-colors">
             <td class="px-6 py-4 whitespace-nowrap">
-                <span class="px-2.5 py-1 rounded text-xs font-bold bg-amber-100 text-amber-800 tracking-wide uppercase">
-                    In-Person
-                </span>
+                <div class="flex flex-col items-start gap-1">
+                    <span class="px-2.5 py-1 rounded text-xs font-bold bg-amber-100 text-amber-800 tracking-wide uppercase">
+                        In-Person
+                    </span>
+                    <span class="text-[11px] font-medium text-slate-500">
+                        ${paper.location_name || 'Unknown Location'}
+                    </span>
+                </div>
             </td>
             <td class="px-6 py-4">
                 <div class="text-sm font-bold text-slate-800">${paper.defendant_name || 'N/A'}</div>
