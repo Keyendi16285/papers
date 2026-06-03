@@ -14,7 +14,7 @@ import os
 import httpx
 
 from database import engine, create_db_and_tables, get_session, get_db
-from models import CaseEntry, Paper, PaperDate, PaperCreate, DateEntry, PaperDateReadWithPaper, PaperDateUpdate, PaperRead, PaperReview
+from models import CaseEntry, Paper, PaperDate, PaperCreate, DateEntry, PaperDateReadWithPaper, PaperDateUpdate, PaperRead, PaperReview, TrackerMatchResponse
 
 CASETRACKER_URL = os.getenv("CASETRACKER_URL", "http://host.docker.internal:8001")
 
@@ -200,7 +200,7 @@ async def list_all_dates(
                         d.paper.location_name = "Unknown"
                 except Exception as e:
                     print(f"Lookup failed for {d.paper.case_name}: {e}")
-                    d.paper.location_name = "Offline"
+                    d.paper.location_name = d.paper.location_name 
             
     return dates
 
@@ -350,57 +350,132 @@ async def get_upcoming_dates(session: Session = Depends(get_session)):
                         d.paper.location_name = "Unknown"
                 except Exception as e:
                     print(f"Lookup failed for {d.paper.case_name}: {e}")
-                    d.paper.location_name = "Offline"
+                    d.paper.location_name = d.paper.location_name
             
     return dates
 
+@app.get("/api/papers/dates/{date_id}")
+async def get_single_date_details(date_id: int, db: Session = Depends(get_session)):
+    # Fetch the explicit date record
+    db_date = db.get(PaperDate, date_id)
+    if not db_date:
+        raise HTTPException(status_code=404, detail="Date record not found")
+        
+    # Fetch parent context details so the frontend receives the fallback paper details
+    parent_paper = db.get(Paper, db_date.paper_id)
+    
+    # Merge both structures into a single response payload
+    return {
+        "id": db_date.id,
+        "date": db_date.date,
+        "event_link": getattr(db_date, "event_link", ""),
+        "court_type": getattr(db_date, "court_type", ""),
+        "optional_text": getattr(db_date, "optional_text", ""),
+        "case_title": getattr(parent_paper, "case_title", "") if parent_paper else "",
+        "defendant_name": getattr(parent_paper, "defendant_name", "") if parent_paper else "",
+        "location_name": getattr(parent_paper, "location_name", "") if parent_paper else "",
+        "type": getattr(parent_paper, "type", "") if parent_paper else "",
+        "description": getattr(parent_paper, "description", "") if parent_paper else "",
+        "party": getattr(db_date, "party", "D")  # Default to "D" if not specified
+    }
+
+@app.get("/api/papers/dates/{date_id}/tracker-check", response_model=TrackerMatchResponse)
+async def check_case_tracker_match(date_id: int, db: Session = Depends(get_session)):
+    # 1. Locate the active date/event record
+    db_date = db.get(PaperDate, date_id)
+    if not db_date:
+        raise HTTPException(status_with_code=404, detail="Target date record not found")
+        
+    # 2. Extract the parent record reference to acquire tracking criteria
+    parent_paper = db.get(Paper, db_date.paper_id)
+    if not parent_paper:
+        raise HTTPException(status_code=404, detail="Associated parent paper file not found")
+    
+    # Extract identifiers (checking fallback parameters: case_id or case_number)
+    case_number_query = getattr(parent_paper, "case_number", None)
+    case_id_query = getattr(parent_paper, "case_id", None)
+    
+    tracker_record = None
+    
+    # 3. Query the casetracker table explicitly using unique identifiers
+    if case_id_query:
+        tracker_record = db.exec(CaseEntry).filter(CaseEntry.id == case_id_query).first()
+    
+    if not tracker_record and case_number_query:
+        tracker_record = db.exec(CaseEntry).filter(CaseEntry.case_number == case_number_query).first()
+        
+    # 4. Evaluate findings and respond with clean mapping data parameters
+    if tracker_record:
+        return TrackerMatchResponse(
+            matched=True,
+            case_name=getattr(tracker_record, "case_name", None) or getattr(tracker_record, "case_title", ""),
+            defendant_name=getattr(tracker_record, "defendant_name", ""),
+            location_name=getattr(tracker_record, "location_name", "")  # Corresponds to "State / County"
+        )
+        
+    # Fallback response state if no identifiers provide an explicit production record match
+    return TrackerMatchResponse(matched=False)    
+    
 @app.patch("/api/papers/dates/{date_id}", response_model=PaperDate)
 async def update_paper_date(
-    date_id: int, 
-    date_update: PaperDateUpdate, 
-    session: Session = Depends(get_session)
+    date_id: int,
+    update_data: PaperDateUpdate,
+    db: Session = Depends(get_session)
 ):
-    # 1. Fetch the specific date record
-    db_date = session.get(PaperDate, date_id)
+    """
+    Updates a specific upcoming date execution item, while safely synchronizing
+    parent relational profile information (location_name, defendant_name, case_title, etc.)
+    """
+    logger.info(f"Received PATCH request for PaperDate ID: {date_id}")
+    logger.info(f"Payload update data details: {update_data.dict(exclude_unset=True)}")
+
+    # 1. Retrieve the target date record
+    db_date = db.get(PaperDate, date_id)
     if not db_date:
-        raise HTTPException(status_code=404, detail="Deadline not found")
-    
-    # 2. Update only the fields provided in the modal
-    if date_update.date is not None:
-        db_date.date = date_update.date
-    if date_update.party is not None:
-        db_date.party = date_update.party
-    if date_update.optional_text is not None:
-        db_date.optional_text = date_update.optional_text
-    if date_update.court_type is not None:
-        db_date.court_type = date_update.court_type
-    if date_update.event_link is not None:
-        db_date.event_link = date_update.event_link
-    
-    # 3. Save to database
-    session.add(db_date)
-    # session.commit()
-    # session.refresh(db_date)
-    
-    if db_date.paper_id:
-        db_paper = session.get(Paper, db_date.paper_id)
-        if db_paper:
-            # Check and map the incoming dashboard fields to the paper record
-            if hasattr(date_update, "defendant_name") and date_update.defendant_name is not None:
-                db_paper.defendant_name = date_update.defendant_name
-            if hasattr(date_update, "case_title") and date_update.case_title is not None:
-                db_paper.case_title = date_update.case_title
-            if hasattr(date_update, "type") and date_update.type is not None:
-                db_paper.type = date_update.type
-            if hasattr(date_update, "description") and date_update.description is not None:
-                db_paper.description = date_update.description
-            if hasattr(date_update, "location_name") and date_update.location_name is not None:
-                db_paper.location_name = date_update.location_name
-                
-            session.add(db_paper)
-            
-    session.commit()
-    session.refresh(db_date)
+        raise HTTPException(status_code=404, detail="PaperDate record not found")
+
+    # 2. Extract parent tracking configuration
+    parent = getattr(db_date, 'paper', None)
+    if not parent and hasattr(db_date, 'paper_id') and db_date.paper_id:
+        parent = db.get(Paper, db_date.paper_id)
+
+    if not parent:
+        logger.warning(f"Orphaned PaperDate record detected (ID {date_id}). Missing parent configuration context.")
+        raise HTTPException(status_code=422, detail="Parent Paper configuration record missing.")
+
+    # 3. Process fields intended for the relational parent 'Paper' model
+    parent_fields = ["defendant_name", "case_title", "type", "description", "location_name"]
+    parent_updated = False
+
+    for field in parent_fields:
+        value = getattr(update_data, field, None)
+        if value is not None:
+            # Prevent blank inputs from bypassing or corrupting string entries
+            cleaned_value = str(value).strip()
+            setattr(parent, field, cleaned_value if cleaned_value != "" else None)
+            parent_updated = True
+
+    # Defensive check: Only apply fallback default if the location field is truly missing/null
+    if parent.location_name is None or str(parent.location_name).strip() == "":
+        parent.location_name = "Offline"
+
+    if parent_updated:
+        db.add(parent)
+        logger.info(f"Parent Paper ID {parent.id} attributes successfully synchronized.")
+
+    # 4. Process fields intended for the localized 'PaperDate' execution record
+    date_fields = ["date", "optional_text", "court_type", "event_link", "is_completed", "party"]
+    for field in date_fields:
+        value = getattr(update_data, field, None)
+        if value is not None:
+            setattr(db_date, field, value)
+
+    # Save updates across both tables
+    db.add(db_date)
+    db.commit()
+    db.refresh(db_date)
+
+    logger.info(f"PaperDate ID {date_id} saved successfully.")
     return db_date
 
 @app.get("/review.html", response_class=HTMLResponse)
@@ -585,3 +660,5 @@ async def get_travel_docket(q: Optional[str] = None, db: Session = Depends(get_s
     except Exception as e:
         logger.error(f"Travel Route Engine Exception Raised: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal database processing error: {str(e)}")
+    
+

@@ -74,20 +74,6 @@
                             Group by Defendants
                         </button>
                     </div>
-                    <!-- <div class="flex gap-2">
-                        <div
-                            class="flex items-center gap-2 px-3 py-1 bg-red-50 border border-red-100 rounded-lg text-[10px] font-bold text-red-600">
-                            <span class="w-2 h-2 bg-red-500 rounded-full"></span> Plaintiff
-                        </div>
-                        <div
-                            class="flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-100 rounded-lg text-[10px] font-bold text-blue-600">
-                            <span class="w-2 h-2 bg-blue-500 rounded-full"></span> Defendant
-                        </div>
-                        <div
-                            class="flex items-center gap-2 px-3 py-1 bg-purple-50 border border-purple-100 rounded-lg text-[10px] font-bold text-purple-600">
-                            <span class="w-2 h-2 bg-purple-500 rounded-full"></span> Court
-                        </div>
-                    </div> -->
                     <div class="relative w-full md:w-72">
                         <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
                             <i class="fas fa-search text-sm"></i>
@@ -121,103 +107,127 @@
         </div>
     </main>
 
-    <div id="edit-modal"
-        class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
-                <h3 class="font-black text-slate-800 uppercase tracking-tight">Edit Deadline</h3>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><i
-                        class="fa-solid fa-xmark"></i></button>
+    <div id="edit-date-modal"
+        class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center z-50 animate-fade-in">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 overflow-hidden">
+            <div class="bg-gray-800 px-6 py-4 flex items-center justify-between text-white">
+                <h3 class="text-lg font-semibold tracking-wide">Edit Calendar Event & Paper Details</h3>
+                <button type="button" onclick="closeModal()"
+                    class="text-gray-400 hover:text-white transition-colors focus:outline-none text-xl">&times;</button>
             </div>
-            <form id="edit-date-form" class="p-6 space-y-4">
-                <input type="hidden" id="edit-id">
 
-                <div>
-                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Defendant Name</label>
-                    <input type="text" id="edit-defendant-name"
-                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            <form id="edit-date-form" class="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                <input type="hidden" id="edit-date-id" name="date_id">
+
+                <div class="border-b border-gray-200 pb-3">
+                    <span class="text-xs font-bold text-blue-600 uppercase tracking-wider">Event Scheduling
+                        Properties</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Event Target Date</label>
+                        <input type="date" id="edit-date-value" name="date"
+                            class="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Paper Category</label>
+                        <select id="edit-court-type" name="court_type"
+                            class="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
+                            <option value="">N/A</option>
+                            <option value="In Person">In Person</option>
+                            <option value="Zoom">Zoom</option>
+                            <option value="Hybrid">Hybrid</option>
+                            <option value="Clerk">Clerk</option>
+                            <option value="Unknown">Unknown</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Responsible Party</label>
+                        <select id="edit-party"
+                            class="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
+                            <option value="P">Plaintiff (P)</option>
+                            <option value="D">Defendant (D)</option>
+                            <option value="Court Hearing">Court Hearing</option>
+                            <option value="Court Other">Court Other</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Paper Type</label>
+                        <select id="edit-paper-type"
+                            class="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
+                            <option value="Pleading">Pleading</option>
+                            <option value="Motion">Motion</option>
+                            <option value="MSJ">MSJ</option>
+                            <option value="Courtesy Copies">Courtesy Copies</option>
+                            <option value="Fee Petition">Fee Petition</option>
+                            <option value="Discovery Req">Discovery Req</option>
+                            <option value="Discovery Resp">Discovery Resp</option>
+                            <option value="Court (Only)">Court (Only)</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div>
-                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Case Name</label>
-                    <input type="text" id="edit-case-name"
-                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Clickable Event/Docket Link</label>
+                    <input type="url" id="edit-event-link" name="event_link"
+                        placeholder="https://docket-access-link.gov/..."
+                        class="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
                 </div>
 
                 <div>
-                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Deadline Date/Time</label>
-                    <input type="datetime-local" id="edit-date"
-                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Internal Memo / Notes</label>
+                    <textarea id="edit-description" name="description" rows="3"
+                        placeholder="Provide extended factual summaries or tracking descriptions..."
+                        class="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"></textarea>
                 </div>
 
                 <div>
-                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">State / County</label>
-                    <input type="text" id="edit-location-name"
-                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Event Notes</label>
+                    <input type="text" id="edit-optional-text" name="optional_text"
+                        placeholder="e.g., Status Conference Hearing"
+                        class="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
                 </div>
 
-                <div>
-                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Event Note</label>
-                    <textarea id="edit-description" rows="3"
-                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                <div class="border-b border-gray-200 pt-2 pb-3">
+                    <span class="text-xs font-bold text-emerald-600 uppercase tracking-wider">Parent Case Profile Data
+                        (Dashboard Fields)</span>
                 </div>
 
-                <div>
-                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Paper Type</label>
-                    <select id="edit-paper-type"
-                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="Pleading">Pleading</option>
-                        <option value="Motion">Motion</option>
-                        <option value="MSJ">MSJ</option>
-                        <option value="Courtesy Copies">Courtesy Copies</option>
-                        <option value="Fee Petition">Fee Petition</option>
-                        <option value="Discovery Req">Discovery Req</option>
-                        <option value="Discovery Resp">Discovery Resp</option>
-                        <option value="Court (Only)">Court (Only)</option>
-                    </select>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Case Name</label>
+                        <input type="text" id="edit-case-name" name="case_name"
+                            class="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Defendant Name</label>
+                        <input type="text" id="edit-defendant-name" name="defendant_name"
+                            class="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
+                    </div>
                 </div>
 
-                <div>
-                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Responsible Party</label>
-                    <select id="edit-party" onchange="toggleEditCourtType()"
-                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="P">Plaintiff (P)</option>
-                        <option value="D">Defendant (D)</option>
-                        <option value="Court Hearing">Court Hearing</option>
-                        <option value="Court Other">Court Other</option>
-                    </select>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Location Name (State /
+                            County)</label>
+                        <input type="text" id="edit-location-name" name="location_name"
+                            placeholder="e.g., Massachusetts - Suffolk"
+                            class="w-full px-3 py-2 border border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
+                    </div>
                 </div>
 
-                <div id="edit-court-type-container" class="hidden">
-                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Court Type</label>
-                    <select id="edit-court-type"
-                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-purple-500">
-                        <option value="">N/A</option>
-                        <option value="In Person">In Person</option>
-                        <option value="Zoom">Zoom</option>
-                        <option value="Hybrid">Hybrid</option>
-                        <option value="Clerk">Clerk</option>
-                        <option value="Unknown">Unknown</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Event Description</label>
-                    <input type="text" id="edit-text"
-                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-
-                <div>
-                    <label class="block text-[10px] font-black uppercase text-slate-400 mb-1">Event Link</label>
-                    <input type="url" id="edit-event-link"
-                        class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="https://...">
-                </div>
-
-                <div class="pt-4">
+                <div class="pt-4 flex items-center justify-end space-x-3 border-t border-gray-100">
+                    <button type="button" onclick="closeModal()"
+                        class="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded hover:bg-gray-50 transition-colors focus:outline-none">
+                        Cancel
+                    </button>
                     <button type="submit"
-                        class="w-full bg-slate-900 hover:bg-blue-600 text-white font-bold py-3 rounded-xl transition-all">
-                        Update Deadline
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded shadow transition-colors focus:outline-none">
+                        Save Updates
                     </button>
                 </div>
             </form>

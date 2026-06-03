@@ -184,14 +184,14 @@ function buildTableRowHtml(d) {
                 ${locationInfo}
             </td>
             <td class="px-6 py-4 text-xs font-medium text-slate-600">
-                ${d.type || 'Filing / Event Context'}
+                ${d.paper?.type || 'Filing / Event Context'}
                 <div class="mt-1">${clickableLink}</div>
             </td>
             <td class="px-6 py-4 text-xs text-slate-500 max-w-xs truncate" title="${optionalTextSnippet}">
                 ${optionalTextSnippet}
             </td>
             <td class="px-6 py-4 text-right">
-                <button onclick="openEditModal(${d.id})" class="text-slate-400 hover:text-blue-600 transition-colors p-2">
+                <button onclick="openEditModal(${d.id}, ${JSON.stringify(d).replace(/"/g, '&quot;')}) " class="text-slate-400 hover:text-blue-600 transition-colors p-2">
                     <i class="fas fa-edit"></i>
                 </button>
             </td>
@@ -221,47 +221,82 @@ function setGroupingMode(mode) {
     renderDisplay();
 }
 
+
+function safeSetInputValue(elementId, value) {
+    const el = document.getElementById(elementId);
+    if (el) {
+        el.value = value !== null && value !== undefined ? value : '';
+    } else {
+        console.warn(`[DOM Warning]: Element with ID "${elementId}" was not found in dates.html layout.`);
+    }
+}
+
+async function openEditModal(dateId) {
+    try {
+        console.log(`[Edit Modal Initiated]: Fetching context for Date ID: ${dateId}`);
+        
+        // Fetch target record configuration data from your FastAPI backend
+        const response = await authFetch(`/api/papers/dates/${dateId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch backend configuration details for date: ${dateId}`);
+        }
+        
+        const data = await response.json();
+        
+        // 1. Assign values to standard date fields
+        safeSetInputValue('edit-date-id', dateId);
+        safeSetInputValue('edit-date-value', data.date ? data.date.split('T')[0] : '');
+        safeSetInputValue('edit-court-type', data.court_type);
+        safeSetInputValue('edit-event-link', data.event_link);
+        safeSetInputValue('edit-optional-text', data.optional_text);
+        safeSetInputValue('edit-party', data.party);
+        
+        // 2. Assign values to relational paper profile fields (Dashboard extensions)
+        // If data comes back via case tracker validation match fallback safely
+        const paperContext = data.paper || data;
+        safeSetInputValue('edit-case-name', paperContext.case_title || paperContext.case_name);
+        safeSetInputValue('edit-defendant-name', paperContext.defendant_name);
+        safeSetInputValue('edit-location-name', paperContext.location_name);
+        safeSetInputValue('edit-paper-type', paperContext.type);
+        safeSetInputValue('edit-description', paperContext.description);
+        
+        // 3. Reveal the Modal View Component CSS Interface
+        const modalContainer = document.getElementById('edit-date-modal');
+        if (modalContainer) {
+            modalContainer.classList.remove('hidden');
+            modalContainer.classList.add('flex');
+        } else {
+            console.error('[DOM Error]: Main modal container element "#edit-date-modal" is missing!');
+        }
+
+    } catch (error) {
+        console.error("Operational failure opening modal intercept context:", error);
+    }
+}
+
 /**
- * Handle Modal Operations Safely
+ * Dynamic Close Modal Utility Routine
  */
-function openEditModal(id) {
-    const item = activeDatesRegistry[id];
-    if (!item) return;
-
-    document.getElementById('edit-id').value = id;
-    document.getElementById('edit-date').value = item.date ? item.date.substring(0, 16) : '';
-    document.getElementById('edit-party').value = item.party || '';
-    document.getElementById('edit-text').value = item.optional_text || item.description || '';
-    document.getElementById('edit-court-type').value = item.court_type || '';
-    document.getElementById('edit-defendant-name').value = item.defendant_name || item.paper?.defendant_name || '';
-    document.getElementById('edit-case-name').value = item.case_title || item.paper?.case_name || '';
-    document.getElementById('edit-paper-type').value = item.type || '';
-    document.getElementById('edit-description').value = item.description || '';
-    document.getElementById('edit-location-name').value = item.location_name || item.paper?.location_name || '';
-    document.getElementById('edit-event-link').value = item.event_link || '';
-
-    if (typeof toggleEditCourtType === 'function') toggleEditCourtType();
-
-    const modal = document.getElementById('edit-modal');
-    if (modal) modal.classList.remove('hidden');
-}
-
 function closeModal() {
-    const modal = document.getElementById('edit-modal');
-    if (modal) modal.classList.add('hidden');
+    const modalContainer = document.getElementById('edit-date-modal');
+    if (modalContainer) {
+        modalContainer.classList.add('hidden');
+        modalContainer.classList.remove('flex');
+    }
 }
+
 
 /**
  * Intercept Data Submission
  */
 async function handleFormSubmit(e) {
     e.preventDefault();
-    const id = document.getElementById('edit-id').value;
+    const id = document.getElementById('edit-date-id').value;
 
     const payload = {
-        date: document.getElementById('edit-date').value,
+        date: document.getElementById('edit-date-value').value,
         party: document.getElementById('edit-party').value,
-        optional_text: document.getElementById('edit-text').value,
+        optional_text: document.getElementById('edit-optional-text').value,
         court_type: document.getElementById('edit-court-type').value,
         defendant_name: document.getElementById('edit-defendant-name').value,
         case_title: document.getElementById('edit-case-name').value,
