@@ -185,32 +185,8 @@ class CaseEntry(SQLModel, table=True):
     judge: Optional[str] = Field(default=None)
     
     
-# class PaperReview(SQLModel, table=True):
-#     __tablename__ = "paper_review"
-
-#     # Always include the specific type (int) inside Optional[...]
-#     id: Optional[int] = Field(default=None, primary_key=True)
-#     paper_id: Optional[int] = Field(default=None, foreign_key="paper.id")
-#     paper_date_id: Optional[int] = Field(default=None, foreign_key="paperdate.id")
-    
-#     # Explicitly hint these as Optional[str] so SQLModel knows they are VARCHAR columns
-#     case_number: Optional[str] = None
-#     case_name: Optional[str] = None
-#     defendant_name: Optional[str] = None
-#     state: Optional[str] = None
-#     county: Optional[str] = None
-    
-#     # Use specific date and time types
-#     date: Optional[date] = None
-#     time: Optional[time] = None
-    
-#     # Use str for the 'type' field
-#     type: Optional[str] = None
-    
-#     judge: Optional[str] = None
-#     format: Optional[str] = None
-#     source: Optional[str] = None
-#     event_link: Optional[str] = None
-    
-#     # Use datetime for the timestamp column
-#     timestamp: Optional[datetime] = Field(default_factory=datetime.utcnow)
+class TrackerMatchResponse(SQLModel):
+    matched: bool
+    case_name: Optional[str] = None
+    defendant_name: Optional[str] = None
+    location_name: Optional[str] = None  # Maps to the "State / County" UI field
