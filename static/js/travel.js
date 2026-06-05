@@ -158,9 +158,9 @@ function buildTravelRowHtml(paper) {
             </td>
             <td class="px-6 py-4 text-right whitespace-nowrap">
                 <!-- Uses globally exposed viewPaperDetails from main.js -->
-            <button onclick="viewPaperDetails(${paper.id}, '${paper.defendant_name.replace(/'/g, "\\'")}')" class="text-xs bg-slate-900 hover:bg-blue-600 text-white font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm">
-                View Event
-            </button>
+                <button onclick="redirectToEditDate(${paper.id})" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs transition font-medium">
+                    Edit Event
+                </button>
             </td>
         </tr>
     `;
@@ -185,4 +185,15 @@ function setTravelGroupingMode(mode) {
     });
 
     renderTravelDisplay();
+}
+
+function redirectToEditDate(dateId) {
+    if (!dateId) {
+        console.error("Cannot redirect: Missing date ID context.");
+        return;
+    }
+    // Store the ID in localStorage so dates.html can read it upon loading
+    localStorage.setItem('pendingEditDateId', dateId);
+    // Redirect the browser to the upcoming dates page
+    window.location.href = '/dates';
 }

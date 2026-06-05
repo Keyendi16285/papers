@@ -51,7 +51,33 @@ async function fetchAllDates(searchQuery = '') {
             cachedDates = [];
         }
 
+        // 1. Populate the global registry cache for defensive modal lookups
+        window.activeDatesRegistry = {};
+        cachedDates.forEach(event => {
+            if (event && event.id) {
+                window.activeDatesRegistry[event.id] = event;
+            }
+        });
+
+        // 2. Render the rows or UI groupings onto the screen
         renderDisplay();
+
+        // 3. Intercept the redirection state from localStorage cleanly
+        const pendingId = localStorage.getItem('pendingEditDateId');
+        if (pendingId) {
+            console.log(`[Redirect Handshake] Detected pending edit target ID: ${pendingId}`);
+            
+            // Remove the key immediately so it doesn't reopen on a manual page refresh
+            localStorage.removeItem('pendingEditDateId');
+            
+            // Trigger the modal directly since the DOM elements and cache registry are built
+            if (typeof openEditModal === 'function') {
+                openEditModal(parseInt(pendingId, 10));
+            } else {
+                console.error("[Redirect Handshake] openEditModal function is missing in scope.");
+            }
+        }
+
     } catch (err) { 
         console.error("Failed to fetch dates data:", err); 
     }
@@ -199,6 +225,25 @@ function buildTableRowHtml(d) {
     `;
 }
 
+async function checkRedirectedEditContext() {
+    const pendingId = localStorage.getItem('pendingEditDateId');
+    if (pendingId) {
+        console.log(`Detected redirected edit context for Date ID: ${pendingId}`);
+        
+        // Clean up localStorage immediately so it doesn't reopen on a manual refresh
+        localStorage.removeItem('pendingEditDateId');
+        
+        // Give the UI a brief moment to ensure records are painted, then trigger the modal
+        setTimeout(() => {
+            if (typeof openEditModal === 'function') {
+                openEditModal(parseInt(pendingId));
+            } else {
+                console.error("openEditModal function is not accessible in current scope.");
+            }
+        }, 200);
+    }
+}
+
 /**
  * Invoked Directly via Inline onclick triggers from filters
  */
@@ -323,3 +368,4 @@ async function handleFormSubmit(e) {
         console.error(err);
     }
 }
+
