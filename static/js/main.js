@@ -212,12 +212,19 @@ function addDateRow(data = null) {
             <input type="text" class="row-text w-full p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none" placeholder="e.g. Status Report Due" value="${data?.optional_text || ''}">
         </div>
         <div class="w-full md:w-1/4">
-            <label class="text-[9px] uppercase font-bold text-slate-400 block mb-1">Order URL (Optional)</label>
+            <label class="text-[9px] uppercase font-bold text-slate-400 block mb-1">Source Link URL (Optional)</label>
             <div class="relative">
                 <i class="fa-solid fa-link absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-300 text-[10px]"></i>
-                <input type="url" class="row-link w-full pl-7 pr-2 py-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500" placeholder="Paste link..." value="${data?.event_link || ''}">
+                <input type="url" class="row-link w-full pl-7 pr-2 py-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500" placeholder="Paste source link..." value="${data?.source_link || ''}">
             </div>
         </div>
+        <div class="w-full md:w-1/4">
+            <label class="text-[9px] uppercase font-bold text-slate-400 block mb-1">Event Link URL (Optional)</label>
+            <div class="relative">
+                <i class="fa-solid fa-link absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-300 text-[10px]"></i>
+                <input type="url" class="row-link w-full pl-7 pr-2 py-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500" placeholder="Paste event link..." value="${data?.event_link || ''}">
+            </div>
+        </div>        
         <button type="button" onclick="this.parentElement.remove()" class="p-2 text-slate-300 hover:text-red-500 transition mb-0.5"><i class="fa-solid fa-trash-can"></i></button>
     `;
     container.appendChild(row);
@@ -242,7 +249,8 @@ async function handleFormSubmit(e) {
         party: row.querySelector('.row-party').value,
         court_type: row.querySelector('.row-party').value.includes('Court') ? row.querySelector('.row-court-type').value : null,
         optional_text: row.querySelector('.row-text').value,
-        event_link: row.querySelector('.row-link').value
+        event_link: row.querySelector('.row-link').value,
+        source_link: row.querySelector('.row-source-link').value
     })).filter(d => d.date !== "");
 
     const payload = {
@@ -508,11 +516,18 @@ function renderReviewQueue(groups, status = 'pending') {
                                     <td class="px-4 py-3">${event.source || '--'}</td>
                                     <td class="px-4 py-3">${event.event_link
                                         ? `<a href="${event.event_link}" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-700 underline inline-flex items-center gap-1">
-                                        View Link
+                                        View Event Link
                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                                     </a>`
                                         : '<span class="text-slate-400 italic">No Link Available</span>'
                                     }</td>
+                                    <td class="px-4 py-3">${event.source_link
+                                        ? `<a href="${event.source_link}" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-700 underline inline-flex items-center gap-1">
+                                        View Source Link
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                    </a>`
+                                        : '<span class="text-slate-400 italic">No Link Available</span>'
+                                    }</td>                                    
                                     ${status === 'pending' ? `
                                     <td class="p-2 text-right flex justify-end gap-1">
                                         <button 
