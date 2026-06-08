@@ -292,7 +292,8 @@ async def update_paper(
             party=date_entry.party,
             optional_text=date_entry.optional_text,
             court_type=getattr(date_entry, "court_type", None),
-            event_link=date_entry.event_link
+            event_link=date_entry.event_link,
+            source_link=date_entry.source_link
         )
         session.add(new_date)
         new_dates.append(new_date)
@@ -369,6 +370,7 @@ async def get_single_date_details(date_id: int, db: Session = Depends(get_sessio
         "id": db_date.id,
         "date": db_date.date,
         "event_link": getattr(db_date, "event_link", ""),
+        "source_link": getattr(db_date, "source_link", ""),
         "court_type": getattr(db_date, "court_type", ""),
         "optional_text": getattr(db_date, "optional_text", ""),
         "case_title": getattr(parent_paper, "case_title", "") if parent_paper else "",
@@ -464,7 +466,7 @@ async def update_paper_date(
         logger.info(f"Parent Paper ID {parent.id} attributes successfully synchronized.")
 
     # 4. Process fields intended for the localized 'PaperDate' execution record
-    date_fields = ["date", "optional_text", "court_type", "event_link", "is_completed", "party"]
+    date_fields = ["date", "optional_text", "court_type", "event_link", "source_link", "is_completed", "party"]
     for field in date_fields:
         value = getattr(update_data, field, None)
         if value is not None:
@@ -517,7 +519,8 @@ async def get_review_suggestions(status: str = "pending", db: Session = Depends(
             "judge": item.judge,
             "time": item.time,
             "source": item.source,
-            "event_link": item.event_link
+            "event_link": item.event_link,
+            "source_link": item.source_link
         })
     
     # Convert dict to list for easier frontend mapping
@@ -554,7 +557,8 @@ async def approve_reviews(data: ApprovalRequest, db: Session = Depends(get_sessi
             optional_text=review_item.type,
             court_type=review_item.format, # Ensure this matches your model
             source_review_id=review_item.id, 
-            event_link=review_item.event_link
+            event_link=review_item.event_link,
+            source_link=review_item.source_link
         )
         db.add(new_date)
         

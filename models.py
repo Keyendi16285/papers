@@ -49,6 +49,7 @@ class PaperDate(SQLModel, table=True):
     is_completed: bool = Field(default=False)
     court_type: Optional[str] = Field(default=None)
     event_link: Optional[str] = None
+    source_link: Optional[str] = None
 
     paper: Optional[Paper] = Relationship(back_populates="dates")
     source_review_id: Optional[int] = Field(default=None, foreign_key="paper_review.id")
@@ -61,7 +62,7 @@ class DateEntry(SQLModel):
     optional_text: Optional[str] = None
     court_type: Optional[str] = None
     event_link: Optional[str] = None
-    
+    source_link: Optional[str] = None
 class PaperCreate(SQLModel):
     case_id: Optional[int] = None
     defendant_id: Optional[int] = None
@@ -83,6 +84,7 @@ class PaperDateRead(SQLModel):
     optional_text: Optional[str] = None
     is_completed: bool
     event_link: Optional[str] = None
+    source_link: Optional[str] = None
     court_type: Optional[str] 
     source_review_id: Optional[int] 
 
@@ -107,7 +109,8 @@ class PaperDateUpdate(SQLModel):
     optional_text: Optional[str] = None
     court_type: Optional[str] = None
     event_link: Optional[str] = None
-    
+    source_link: Optional[str] = None
+
     defendant_name: Optional[str] = None
     case_title: Optional[str] = None
     type: Optional[str] = None
@@ -123,6 +126,7 @@ class PaperDateReadWithPaper(SQLModel):
     is_completed: bool
     court_type: Optional[str] = None
     event_link: Optional[str] = None
+    source_link: Optional[str] = None
     # Add this line to include the parent details in the JSON
     paper: Optional[PaperRead] = None
     
@@ -146,6 +150,7 @@ class PaperReview(SQLModel, table=True):
     source: Optional[str] = None
     judge: Optional[str] = None
     event_link: Optional[str] = None # Default status
+    source_link: Optional[str] = None
     timestamp: Optional[datetime] = Field(default_factory=datetime.utcnow)
     status: Optional[str] = Field(default="pending")
     

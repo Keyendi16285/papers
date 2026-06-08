@@ -293,6 +293,7 @@ async function openEditModal(dateId) {
         safeSetInputValue('edit-date-value', data.date ? data.date.split('T')[0] : '');
         safeSetInputValue('edit-court-type', data.court_type);
         safeSetInputValue('edit-event-link', data.event_link);
+        safeSetInputValue('edit-source-link', data.source_link);
         safeSetInputValue('edit-optional-text', data.optional_text);
         safeSetInputValue('edit-party', data.party);
         
@@ -348,7 +349,8 @@ async function handleFormSubmit(e) {
         type: document.getElementById('edit-paper-type').value,
         description: document.getElementById('edit-description').value,
         location_name: document.getElementById('edit-location-name').value,
-        event_link: document.getElementById('edit-event-link').value
+        event_link: document.getElementById('edit-event-link').value,
+        source_link: document.getElementById('edit-source-link').value
     };
 
     try {
