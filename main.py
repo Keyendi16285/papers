@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, Depends, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -197,7 +197,7 @@ async def list_all_dates(
                         else:
                             d.paper.location_name = "No Case Match"
                     else:
-                        d.paper.location_name = "Unknown"
+                        d.paper.location_name = d.paper.location_name
                 except Exception as e:
                     print(f"Lookup failed for {d.paper.case_name}: {e}")
                     d.paper.location_name = d.paper.location_name 
@@ -348,7 +348,7 @@ async def get_upcoming_dates(session: Session = Depends(get_session)):
                             else:
                                 d.paper.location_name = "No Case Match"
                     else:
-                        d.paper.location_name = "Unknown"
+                        d.paper.location_name = d.paper.location_name
                 except Exception as e:
                     print(f"Lookup failed for {d.paper.case_name}: {e}")
                     d.paper.location_name = d.paper.location_name
@@ -373,6 +373,7 @@ async def get_single_date_details(date_id: int, db: Session = Depends(get_sessio
         "source_link": getattr(db_date, "source_link", ""),
         "court_type": getattr(db_date, "court_type", ""),
         "optional_text": getattr(db_date, "optional_text", ""),
+        "case_name": getattr(parent_paper, "case_name", "") if parent_paper else "",
         "case_title": getattr(parent_paper, "case_title", "") if parent_paper else "",
         "defendant_name": getattr(parent_paper, "defendant_name", "") if parent_paper else "",
         "location_name": getattr(parent_paper, "location_name", "") if parent_paper else "",
@@ -394,7 +395,7 @@ async def check_case_tracker_match(date_id: int, db: Session = Depends(get_sessi
         raise HTTPException(status_code=404, detail="Associated parent paper file not found")
     
     # Extract identifiers (checking fallback parameters: case_id or case_number)
-    case_number_query = getattr(parent_paper, "case_number", None)
+    case_number_query = getattr(parent_paper, "case_name", None)
     case_id_query = getattr(parent_paper, "case_id", None)
     
     tracker_record = None
@@ -543,8 +544,10 @@ async def approve_reviews(data: ApprovalRequest, db: Session = Depends(get_sessi
         if not paper:
             paper = Paper(
                 case_name=review_item.case_number,
+                case_title=review_item.case_name,
                 defendant_name=review_item.defendant_name,
                 source_review_id=review_item.id,
+                location_name= f"{review_item.state if review_item.state else ''} / {review_item.county if review_item.county else ''}",
                 
             )
             db.add(paper)
@@ -665,4 +668,67 @@ async def get_travel_docket(q: Optional[str] = None, db: Session = Depends(get_s
         logger.error(f"Travel Route Engine Exception Raised: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal database processing error: {str(e)}")
     
+def sync_historical_papers(db: Session):
+    """
+    Background worker function that finds historical papers with missing 
+    metadata fields and populates them using data from paper_review.
+    """
+    # 1. Fetch papers that have placeholder or null indicators
+    # Adapt filters if your database uses empty strings "" instead of None/Null
+    statement = select(Paper).where(
+        (Paper.case_title == None) | (Paper.case_title == "N/A") | 
+        (Paper.location_name == None) | (Paper.location_name == "Unknown")
+    )
+    historical_papers = db.exec(statement).all()
+    
+    updated_count = 0
+    
+    for paper in historical_papers:
+        # Check if we have a valid reference to the source review table
+        if not getattr(paper, "source_review_id", None):
+            continue
+            
+        # 2. Find the corresponding row in paper_review
+        review_item = db.get(PaperReview, paper.source_review_id)
+        if not review_item:
+            continue
+            
+        # 3. Synchronize missing values down to the paper entry
+        is_mutated = False
+        
+        if not paper.case_title or paper.case_title == "N/A":
+            paper.case_title = review_item.case_name
+            is_mutated = True
+            
+        # Construct location format to match your new implementation pattern
+        formatted_location = f"{review_item.state if review_item.state else ''} / {review_item.county if review_item.county else ''}".strip(" / ")
+        if not formatted_location:
+            formatted_location = "Unknown"
+            
+        if not paper.location_name or paper.location_name == "Unknown":
+            paper.location_name = formatted_location
+            is_mutated = True
+            
+        if is_mutated:
+            db.add(paper)
+            updated_count += 1
+            
+    # 4. Commit all structural changes to the database
+    if updated_count > 0:
+        db.commit()
+    
+    print(f"Successfully synchronized {updated_count} historical paper records.")
+
+
+@app.post("/api/admin/maintenance/backfill-metadata")
+async def trigger_metadata_backfill(background_tasks: BackgroundTasks, db: Session = Depends(get_session)):
+    """
+    Triggers an asynchronous background process to fix missing 
+    case names and locations for historical papers.
+    """
+    background_tasks.add_task(sync_historical_papers, db)
+    return {
+        "status": "success",
+        "message": "Background sync routine initiated. Historical records are being updated."
+    }
 

@@ -172,7 +172,7 @@ function buildTableRowHtml(d) {
     const dateObj = new Date(d.date);
     const isPast = dateObj < new Date();
     
-    const defendant = d.defendant_name || d.paper?.defendant_name || 'N/A';
+    const defendant = d.defendant_name || d.paper?.defendant_name || d.paper?.case_title || 'N/A';
     const caseTitle = d.case_title || d.paper?.case_name || '--';
     const stateCounty = d.location_name || d.paper?.location_name || 'Unknown';
 
