@@ -37,6 +37,7 @@ async function loadTravelDocket(searchQuery = '') {
         if (!response.ok) throw new Error("Failed to load travel itineraries.");
 
         cachedTravelPapers = await response.json();
+        console.log("Fetched travel papers:", cachedTravelPapers);
         if (!Array.isArray(cachedTravelPapers)) {
             cachedTravelPapers = [];
         }
@@ -129,7 +130,29 @@ function buildTravelRowHtml(paper) {
         `;
     }
 
-    return `
+    const parsedContextHtml = (() => {
+        const sourceLink = paper.dates?.source_link || paper.source_link || '';
+        const eventLink = paper.dates?.event_link || paper.event_link || '';
+
+        let filingReplacement = 'Filing';
+        console.log(`sourceLink: ${sourceLink}`);
+        if (sourceLink) {
+            filingReplacement = `<a href="${sourceLink}" target="_blank" class="text-blue-500 hover:underline inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>Filing</a>`;
+        }
+
+        let eventReplacement = 'Event';
+        if (eventLink) {
+            eventReplacement = `<a href="${eventLink}" target="_blank" class="text-blue-500 hover:underline inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>Event</a>`;
+        }
+
+        let finalOutput = 'Filing / Event';
+        if (sourceLink) finalOutput = finalOutput.replace(/Filing/g, filingReplacement);
+        if (eventLink) finalOutput = finalOutput.replace(/Event/g, eventReplacement);
+
+        return finalOutput;
+    })();
+
+        return `
         <tr class="border-b border-slate-50 hover:bg-slate-50 transition-colors">
             <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex flex-col items-start gap-1">
@@ -156,6 +179,9 @@ function buildTravelRowHtml(paper) {
             <td class="px-6 py-4 text-center whitespace-nowrap text-xs font-bold text-slate-500">
                 ${paper.date_count || 0}
             </td>
+            <td class="px-6 py-4 text-xs font-medium text-slate-600">
+                ${parsedContextHtml}
+            </td>
             <td class="px-6 py-4 text-right whitespace-nowrap">
                 <!-- Uses globally exposed viewPaperDetails from main.js -->
                 <button onclick="redirectToEditDate(${paper.id})" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs transition font-medium">
@@ -164,36 +190,36 @@ function buildTravelRowHtml(paper) {
             </td>
         </tr>
     `;
-}
+    }
 
 /**
  * Separate Dynamic Filtering Toggle Function specifically mapped for travel.html elements
  */
 function setTravelGroupingMode(mode) {
-    currentTravelGroupingMode = mode;
+        currentTravelGroupingMode = mode;
 
-    const modes = ['default', 'case', 'defendant'];
-    modes.forEach(m => {
-        const btn = document.getElementById(`btn-group-${m}`);
-        if (!btn) return;
+        const modes = ['default', 'case', 'defendant'];
+        modes.forEach(m => {
+            const btn = document.getElementById(`btn-group-${m}`);
+            if (!btn) return;
 
-        if (m === mode) {
-            btn.className = "px-3.5 py-1.5 rounded-md text-xs font-bold transition-all bg-white text-slate-900 shadow-sm";
-        } else {
-            btn.className = "px-3.5 py-1.5 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all";
-        }
-    });
+            if (m === mode) {
+                btn.className = "px-3.5 py-1.5 rounded-md text-xs font-bold transition-all bg-white text-slate-900 shadow-sm";
+            } else {
+                btn.className = "px-3.5 py-1.5 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all";
+            }
+        });
 
-    renderTravelDisplay();
-}
-
-function redirectToEditDate(dateId) {
-    if (!dateId) {
-        console.error("Cannot redirect: Missing date ID context.");
-        return;
+        renderTravelDisplay();
     }
-    // Store the ID in localStorage so dates.html can read it upon loading
-    localStorage.setItem('pendingEditDateId', dateId);
-    // Redirect the browser to the upcoming dates page
-    window.location.href = '/dates';
-}
+
+    function redirectToEditDate(dateId) {
+        if (!dateId) {
+            console.error("Cannot redirect: Missing date ID context.");
+            return;
+        }
+        // Store the ID in localStorage so dates.html can read it upon loading
+        localStorage.setItem('pendingEditDateId', dateId);
+        // Redirect the browser to the upcoming dates page
+        window.location.href = '/dates';
+    }

@@ -183,8 +183,28 @@ function buildTableRowHtml(d) {
 
     const locationInfo = d.court_type ? `<span class="text-[10px] block text-slate-400 italic">${d.court_type}</span>` : '';
     const optionalTextSnippet = d.optional_text ? d.optional_text : (d.description || '--');
-    const clickableLink = d.event_link ? `<a href="${d.event_link}" target="_blank" class="text-blue-500 hover:underline flex items-center gap-1"><i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> Link</a>` : '<span class="text-slate-300">--</span>';
 
+    const parsedContextHtml = (() => {
+        const sourceLink = d.source_link || d.paper?.source_link || '';
+        const eventLink = d.event_link || d.paper?.event_link || '';
+
+        let filingReplacement = 'Filing';
+        console.log(`sourceLink: ${sourceLink}`);
+        if (sourceLink) {
+            filingReplacement = `<a href="${sourceLink}" target="_blank" class="text-blue-500 hover:underline inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>Filing</a>`;
+        }
+
+        let eventReplacement = 'Event';
+        if (eventLink) {
+            eventReplacement = `<a href="${eventLink}" target="_blank" class="text-blue-500 hover:underline inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>Event</a>`;
+        }
+
+        let finalOutput = 'Filing / Event';
+        if (sourceLink) finalOutput = finalOutput.replace(/Filing/g, filingReplacement);
+        if (eventLink) finalOutput = finalOutput.replace(/Event/g, eventReplacement);
+
+        return finalOutput;
+    })();
     return `
         <tr class="${isPast ? 'opacity-60' : ''} border-b border-slate-50 hover:bg-slate-50 transition-colors">
             <td class="px-6 py-4">
@@ -210,8 +230,7 @@ function buildTableRowHtml(d) {
                 ${locationInfo}
             </td>
             <td class="px-6 py-4 text-xs font-medium text-slate-600">
-                ${d.paper?.type || 'Filing / Event Context'}
-                <div class="mt-1">${clickableLink}</div>
+                ${parsedContextHtml}
             </td>
             <td class="px-6 py-4 text-xs text-slate-500 max-w-xs truncate" title="${optionalTextSnippet}">
                 ${optionalTextSnippet}

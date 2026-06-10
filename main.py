@@ -649,6 +649,9 @@ async def get_travel_docket(q: Optional[str] = None, db: Session = Depends(get_s
             if not parent:
                 logger.warning(f"Skipping PaperDate ID {d_record.id}: No parent Paper profile found.")
                 continue
+            
+            source_link = getattr(parent, 'source_link', None) or getattr(d_record, 'source_link', None) or ""
+            event_link = getattr(d_record, 'event_link', None) or getattr(parent, 'event_link', None) or ""
                 
             results.append({
                 "id": int(parent.id),
@@ -659,7 +662,9 @@ async def get_travel_docket(q: Optional[str] = None, db: Session = Depends(get_s
                 "party": str(d_record.party) if hasattr(d_record, 'party') and d_record.party else 'D',
                 "nearest_date": d_record.date.isoformat() if d_record.date else None,
                 "date_count": 1,
-                "location_name": str(parent.location_name) if hasattr(parent, 'location_name') and parent.location_name else None
+                "location_name": str(parent.location_name) if hasattr(parent, 'location_name') and parent.location_name else None,
+                "source_link": str(source_link) if source_link else "",
+                "event_link": str(event_link) if event_link else ""
             })
             
         return results

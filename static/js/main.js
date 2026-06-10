@@ -324,13 +324,35 @@ async function fetchPapers(filter = 'upcoming', searchQuery = '') {
             const nearestDate = p.dates?.sort((a, b) => new Date(a.date) - new Date(b.date))[0];
             const casewideBadge = p.is_casewide ? `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black bg-amber-100 text-amber-700 border border-amber-200 uppercase tracking-tighter"><i class="fa-solid fa-users-line mr-1"></i> Casewide</span>` : '';
 
-            const linkIcon = nearestDate?.event_link ? `
-                <a href="${nearestDate.event_link}" target="_blank" class="ml-1 text-blue-500 hover:text-blue-700 transition-colors" title="View Order">
-                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-                </a>
-            ` : '';
+            // const linkIcon = nearestDate?.event_link ? `
+            //     <a href="${nearestDate.event_link}" target="_blank" class="ml-1 text-blue-500 hover:text-blue-700 transition-colors" title="View Order">
+            //         <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+            //     </a>
+            // ` : '';
 
-            return `
+            const parsedContextHtml = (() => {
+                const sourceLink = nearestDate?.source_link || p.source_link || '';
+                const eventLink = nearestDate?.event_link || p.event_link || '';
+
+                let filingReplacement = 'Filing';
+                console.log(`sourceLink: ${sourceLink}`);
+                if (sourceLink) {
+                    filingReplacement = `<a href="${sourceLink}" target="_blank" class="text-blue-500 hover:underline inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>Filing</a>`;
+                }
+
+                let eventReplacement = 'Event';
+                if (eventLink) {
+                    eventReplacement = `<a href="${eventLink}" target="_blank" class="text-blue-500 hover:underline inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>Event</a>`;
+                }
+
+                let finalOutput = 'Filing / Event';
+                if (sourceLink) finalOutput = finalOutput.replace(/Filing/g, filingReplacement);
+                if (eventLink) finalOutput = finalOutput.replace(/Event/g, eventReplacement);
+
+                return finalOutput;
+            })();
+
+                return `
                 <tr class="hover:bg-slate-50 transition-colors border-b border-slate-50">
                     <td class="p-4">
                         <div class="flex items-center">
@@ -348,12 +370,14 @@ async function fetchPapers(filter = 'upcoming', searchQuery = '') {
                     <td class="p-4">
                         <div class="flex items-center gap-1">
                             <div class="text-xs font-bold text-slate-700">${nearestDate ? new Date(nearestDate.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }) : 'N/A'}</div>
-                            ${linkIcon}
                         </div>
                         <div class="text-[9px] text-slate-400 truncate max-w-[120px]">${nearestDate?.optional_text || ''}</div>
                     </td>
                     <td class="p-4 text-center">
                         <div class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-xs font-black">${p.dates.length}</div>
+                    </td>
+                    <td class="px-6 py-4 text-xs text-center font-medium text-slate-600">
+                        ${parsedContextHtml}
                     </td>
                     <td class="p-4 text-center">
                         <button onclick="editPaper(${p.id})" class="p-2 text-slate-400 hover:text-blue-500 transition-colors">
@@ -362,103 +386,103 @@ async function fetchPapers(filter = 'upcoming', searchQuery = '') {
                     </td>
                 </tr>
             `;
-        }).join('');
-    } catch (err) { console.error("Load failed:", err); }
-}
+            }).join('');
+        } catch (err) { console.error("Load failed:", err); }
+    }
 
 async function editPaper(id) {
-    try {
-        const response = await authFetch(`/api/papers/${id}`);
-        const paper = await response.json();
-        editingPaperId = id;
-        document.getElementById('paper-type').value = paper.type;
-        document.getElementById('paper-desc').value = paper.description || '';
-        document.getElementById('add_is_casewide').checked = paper.is_casewide;
+        try {
+            const response = await authFetch(`/api/papers/${id}`);
+            const paper = await response.json();
+            editingPaperId = id;
+            document.getElementById('paper-type').value = paper.type;
+            document.getElementById('paper-desc').value = paper.description || '';
+            document.getElementById('add_is_casewide').checked = paper.is_casewide;
 
-        // Setup initial state for re-applying selection logic
-        window.currentCaseTitle = paper.case_title || paper.case_name;
-        window.currentDefendantBaseName = paper.defendant_name.split(' et al.')[0];
-        window.selectedCaseId = paper.case_id;
-        window.selectedDefendantId = paper.defendant_id;
-        window.selectedCaseName = paper.case_name;
+            // Setup initial state for re-applying selection logic
+            window.currentCaseTitle = paper.case_title || paper.case_name;
+            window.currentDefendantBaseName = paper.defendant_name.split(' et al.')[0];
+            window.selectedCaseId = paper.case_id;
+            window.selectedDefendantId = paper.defendant_id;
+            window.selectedCaseName = paper.case_name;
 
-        toggleCasewideMode(paper.is_casewide);
+            toggleCasewideMode(paper.is_casewide);
 
-        const searchInput = document.getElementById('target-search');
-        searchInput.value = paper.defendant_name;
+            const searchInput = document.getElementById('target-search');
+            searchInput.value = paper.defendant_name;
 
+            const container = document.getElementById('date-rows-container');
+            container.innerHTML = '';
+            if (paper.dates && paper.dates.length > 0) {
+                paper.dates.forEach(d => addDateRow(d));
+            } else {
+                addDateRow();
+            }
+
+            document.getElementById('cancel-edit-btn').classList.remove('hidden');
+            document.querySelector('#paper-form button[type=\"submit\"]').innerHTML = 'Update Filing';
+        } catch (e) { console.error(e); }
+    }
+
+    function resetForm() {
+        editingPaperId = null;
+        window.selectedDefendantId = null;
+        window.selectedCaseId = null;
+        window.currentCaseTitle = null;
+        window.currentDefendantBaseName = null;
+        const form = document.getElementById('paper-form');
+        if (form) form.reset();
+        toggleCasewideMode(false);
         const container = document.getElementById('date-rows-container');
         container.innerHTML = '';
-        if (paper.dates && paper.dates.length > 0) {
-            paper.dates.forEach(d => addDateRow(d));
-        } else {
-            addDateRow();
+        addDateRow();
+        document.getElementById('cancel-edit-btn').classList.add('hidden');
+        document.querySelector('#paper-form button[type=\"submit\"]').innerHTML = 'Save Filing & Dates';
+    }
+
+    function handleLogout() {
+        sessionStorage.clear();
+        window.location.replace("https://casetracker.massfoia.com/logout?next=login");
+    }
+
+    window.filterDashboard = (filter) => {
+        const query = document.getElementById('paper-search-input')?.value || '';
+        fetchPapers(filter, query);
+    };
+
+    let globalReviewGroups = [];
+
+    async function loadReviewSuggestions(status = 'pending') {
+        const container = document.getElementById('review-container');
+        if (!container) return;
+
+        try {
+            const response = await authFetch(`/api/review/suggestions?status=${status}`);
+            if (!response.ok) throw new Error("Failed to fetch suggestions");
+
+            // Cache groups globally so our dropdown filter can read it without sending network hits
+            globalReviewGroups = await response.json();
+
+            // Reset the dropdown selector back to 'all' whenever changing staging statuses
+            const matchFilter = document.getElementById('case-match-filter');
+            if (matchFilter) matchFilter.value = 'all';
+
+            // Render the full array
+            renderReviewQueue(globalReviewGroups, status);
+
+        } catch (err) {
+            container.innerHTML = `<div class="text-red-500 p-4">Error loading data: ${err.message}</div>`;
         }
-
-        document.getElementById('cancel-edit-btn').classList.remove('hidden');
-        document.querySelector('#paper-form button[type=\"submit\"]').innerHTML = 'Update Filing';
-    } catch (e) { console.error(e); }
-}
-
-function resetForm() {
-    editingPaperId = null;
-    window.selectedDefendantId = null;
-    window.selectedCaseId = null;
-    window.currentCaseTitle = null;
-    window.currentDefendantBaseName = null;
-    const form = document.getElementById('paper-form');
-    if (form) form.reset();
-    toggleCasewideMode(false);
-    const container = document.getElementById('date-rows-container');
-    container.innerHTML = '';
-    addDateRow();
-    document.getElementById('cancel-edit-btn').classList.add('hidden');
-    document.querySelector('#paper-form button[type=\"submit\"]').innerHTML = 'Save Filing & Dates';
-}
-
-function handleLogout() {
-    sessionStorage.clear();
-    window.location.replace("https://casetracker.massfoia.com/logout?next=login");
-}
-
-window.filterDashboard = (filter) => {
-    const query = document.getElementById('paper-search-input')?.value || '';
-    fetchPapers(filter, query);
-};
-
-let globalReviewGroups = [];
-
-async function loadReviewSuggestions(status = 'pending') {
-    const container = document.getElementById('review-container');
-    if (!container) return;
-
-    try {
-        const response = await authFetch(`/api/review/suggestions?status=${status}`);
-        if (!response.ok) throw new Error("Failed to fetch suggestions");
-
-        // Cache groups globally so our dropdown filter can read it without sending network hits
-        globalReviewGroups = await response.json();
-
-        // Reset the dropdown selector back to 'all' whenever changing staging statuses
-        const matchFilter = document.getElementById('case-match-filter');
-        if (matchFilter) matchFilter.value = 'all';
-
-        // Render the full array
-        renderReviewQueue(globalReviewGroups, status);
-
-    } catch (err) {
-        container.innerHTML = `<div class="text-red-500 p-4">Error loading data: ${err.message}</div>`;
     }
-}
 
-function renderReviewQueue(groups, status = 'pending') {
-    const container = document.getElementById('review-container');
-    
-    if (groups.length === 0) {
-        const message = status === 'pending' ? "No pending reviews found." : status === 'approved' ? "No approved records found." : "No archived records found.";
-        container.innerHTML = `<div class="bg-white p-8 rounded-lg border text-center text-gray-500">${message}</div>`;
-        return;
-    }
+    function renderReviewQueue(groups, status = 'pending') {
+        const container = document.getElementById('review-container');
+
+        if (groups.length === 0) {
+            const message = status === 'pending' ? "No pending reviews found." : status === 'approved' ? "No approved records found." : "No archived records found.";
+            container.innerHTML = `<div class="bg-white p-8 rounded-lg border text-center text-gray-500">${message}</div>`;
+            return;
+        }
         container.innerHTML = groups.map(group => {
             // Pre-compile an array of all review IDs in this group for mass actions
             const allReviewIds = group.events.map(e => e.review_id);
@@ -515,19 +539,19 @@ function renderReviewQueue(groups, status = 'pending') {
                                     <td class="px-4 py-3">${event.judge || '--'}</td>
                                     <td class="px-4 py-3">${event.source || '--'}</td>
                                     <td class="px-4 py-3">${event.event_link
-                                        ? `<a href="${event.event_link}" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-700 underline inline-flex items-center gap-1">
+                    ? `<a href="${event.event_link}" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-700 underline inline-flex items-center gap-1">
                                         View Event Link
                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                                     </a>`
-                                        : '<span class="text-slate-400 italic">No Link Available</span>'
-                                    }</td>
+                    : '<span class="text-slate-400 italic">No Link Available</span>'
+                }</td>
                                     <td class="px-4 py-3">${event.source_link
-                                        ? `<a href="${event.source_link}" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-700 underline inline-flex items-center gap-1">
+                    ? `<a href="${event.source_link}" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-700 underline inline-flex items-center gap-1">
                                         View Source Link
                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                                     </a>`
-                                        : '<span class="text-slate-400 italic">No Link Available</span>'
-                                    }</td>                                    
+                    : '<span class="text-slate-400 italic">No Link Available</span>'
+                }</td>                                    
                                     ${status === 'pending' ? `
                                     <td class="p-2 text-right flex justify-end gap-1">
                                         <button 
@@ -557,122 +581,122 @@ function renderReviewQueue(groups, status = 'pending') {
             </div>
         `;
         }).join('');
-}
-
-function filterReviewQueue() {
-    const filterValue = document.getElementById('case-match-filter').value;
-    
-    // Check which review queue tab is currently visually selected via button layouts
-    let currentStatus = 'pending';
-    if (document.getElementById('btn-approved')?.classList.contains('bg-white')) currentStatus = 'approved';
-    if (document.getElementById('btn-rejected')?.classList.contains('bg-white')) currentStatus = 'rejected';
-
-    let filtered = [...globalReviewGroups];
-
-    if (filterValue === 'matched') {
-        filtered = globalReviewGroups.filter(g => g.exists_in_production === true);
-    } else if (filterValue === 'unmatched') {
-        filtered = globalReviewGroups.filter(g => g.exists_in_production === false);
     }
 
-    renderReviewQueue(filtered, currentStatus);
-}
+    function filterReviewQueue() {
+        const filterValue = document.getElementById('case-match-filter').value;
 
-async function approveGroup(caseNumber, reviewIds) {
-    if (!confirm(`Are you sure you want to migrate these ${reviewIds.length} items to production?`)) return;
+        // Check which review queue tab is currently visually selected via button layouts
+        let currentStatus = 'pending';
+        if (document.getElementById('btn-approved')?.classList.contains('bg-white')) currentStatus = 'approved';
+        if (document.getElementById('btn-rejected')?.classList.contains('bg-white')) currentStatus = 'rejected';
 
-    try {
-        const response = await fetch('/api/review/approve', {
+        let filtered = [...globalReviewGroups];
+
+        if (filterValue === 'matched') {
+            filtered = globalReviewGroups.filter(g => g.exists_in_production === true);
+        } else if (filterValue === 'unmatched') {
+            filtered = globalReviewGroups.filter(g => g.exists_in_production === false);
+        }
+
+        renderReviewQueue(filtered, currentStatus);
+    }
+
+    async function approveGroup(caseNumber, reviewIds) {
+        if (!confirm(`Are you sure you want to migrate these ${reviewIds.length} items to production?`)) return;
+
+        try {
+            const response = await fetch('/api/review/approve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    case_number: caseNumber,
+                    review_ids: reviewIds
+                })
+            });
+
+            if (response.ok) {
+                alert('Data successfully migrated to production!');
+                loadReviewSuggestions(); // Refresh the list
+            } else {
+                const error = await response.json();
+                alert('Error: ' + error.detail);
+            }
+        } catch (err) {
+            alert('Failed to connect to server: ' + err.message);
+        }
+    }
+
+    async function approveSingleDate(reviewId) {
+        if (!confirm('Approve this specific date?')) return;
+
+        try {
+            const response = await fetch('/api/review/approve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ review_ids: [reviewId] }) // Send as a list with one ID
+            });
+
+            if (response.ok) {
+                alert('Date approved successfully');
+                loadReviewSuggestions(); // Refresh the list
+            } else {
+                const error = await response.json();
+                alert(`Error: ${error.detail}`);
+            }
+        } catch (err) {
+            console.error('Approval failed:', err);
+        }
+    }
+
+    async function archiveSingleDate(reviewId) {
+        if (!confirm("Are you sure you want to archive this record?")) return;
+        const response = await authFetch('/api/review/reject', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                case_number: caseNumber,
-                review_ids: reviewIds
-            })
+            body: JSON.stringify({ review_ids: [reviewId] })
         });
-
-        if (response.ok) {
-            alert('Data successfully migrated to production!');
-            loadReviewSuggestions(); // Refresh the list
-        } else {
-            const error = await response.json();
-            alert('Error: ' + error.detail);
-        }
-    } catch (err) {
-        alert('Failed to connect to server: ' + err.message);
+        if (response.ok) loadReviewSuggestions('pending');
     }
-}
 
-async function approveSingleDate(reviewId) {
-    if (!confirm('Approve this specific date?')) return;
-
-    try {
-        const response = await fetch('/api/review/approve', {
+    async function archiveGroup(caseNumber, reviewIds) {
+        if (!confirm(`Are you sure you want to archive all records for case ${caseNumber}?`)) return;
+        const response = await authFetch('/api/review/reject', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ review_ids: [reviewId] }) // Send as a list with one ID
+            body: JSON.stringify({ review_ids: reviewIds })
         });
+        if (response.ok) loadReviewSuggestions('pending');
+    }
 
+    async function unarchiveSingleDate(reviewId) {
+        if (!confirm("Are you sure you want to unarchive this record?")) return;
+        const response = await authFetch('/api/review/unarchive', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ review_ids: [reviewId] })
+        });
         if (response.ok) {
-            alert('Date approved successfully');
-            loadReviewSuggestions(); // Refresh the list
-        } else {
-            const error = await response.json();
-            alert(`Error: ${error.detail}`);
+            // Reloads the active view state to remove the processed record
+            loadReviewSuggestions('rejected');
         }
-    } catch (err) {
-        console.error('Approval failed:', err);
     }
-}
 
-async function archiveSingleDate(reviewId) {
-    if (!confirm("Are you sure you want to archive this record?")) return;
-    const response = await authFetch('/api/review/reject', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ review_ids: [reviewId] })
-    });
-    if (response.ok) loadReviewSuggestions('pending');
-}
-
-async function archiveGroup(caseNumber, reviewIds) {
-    if (!confirm(`Are you sure you want to archive all records for case ${caseNumber}?`)) return;
-    const response = await authFetch('/api/review/reject', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ review_ids: reviewIds })
-    });
-    if (response.ok) loadReviewSuggestions('pending');
-}
-
-async function unarchiveSingleDate(reviewId) {
-    if (!confirm("Are you sure you want to unarchive this record?")) return;
-    const response = await authFetch('/api/review/unarchive', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ review_ids: [reviewId] })
-    });
-    if (response.ok) {
-        // Reloads the active view state to remove the processed record
-        loadReviewSuggestions('rejected');
+    async function unarchiveGroup(caseNumber, reviewIds) {
+        if (!confirm(`Are you sure you want to unarchive all records for case ${caseNumber}?`)) return;
+        const response = await authFetch('/api/review/unarchive', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ review_ids: reviewIds })
+        });
+        if (response.ok) {
+            // Reloads the active view state to remove the processed group
+            loadReviewSuggestions('rejected');
+        }
     }
-}
 
-async function unarchiveGroup(caseNumber, reviewIds) {
-    if (!confirm(`Are you sure you want to unarchive all records for case ${caseNumber}?`)) return;
-    const response = await authFetch('/api/review/unarchive', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ review_ids: reviewIds })
-    });
-    if (response.ok) {
-        // Reloads the active view state to remove the processed group
-        loadReviewSuggestions('rejected');
-    }
-}
-
-window.viewPaperDetails = function(id, defendantName = '') {
-    // Redirects to your main page/dashboard and triggers the existing search filter automatically
-    const searchParam = defendantName ? `?search=${encodeURIComponent(defendantName)}` : '';
-    window.location.href = `/${searchParam}`; 
-};
+    window.viewPaperDetails = function (id, defendantName = '') {
+        // Redirects to your main page/dashboard and triggers the existing search filter automatically
+        const searchParam = defendantName ? `?search=${encodeURIComponent(defendantName)}` : '';
+        window.location.href = `/${searchParam}`;
+    };
