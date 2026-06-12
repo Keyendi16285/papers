@@ -136,7 +136,12 @@ class PaperReview(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     paper_id: Optional[int] = Field(default=None, foreign_key="paper.id")
     paper_date_id: Optional[int] = Field(default=None, foreign_key="paperdate.id")
-    
+
+    # Case Tracker references, resolved by case number / defendant name when the
+    # review is displayed, then copied onto the Paper on approval.
+    case_id: Optional[int] = Field(default=None, index=True)
+    defendant_id: Optional[int] = Field(default=None, index=True)
+
     # Ensure every Optional field has a type like [str] or [datetime]
     case_number: Optional[str] = None
     case_name: Optional[str] = None
@@ -195,3 +200,5 @@ class TrackerMatchResponse(SQLModel):
     case_name: Optional[str] = None
     defendant_name: Optional[str] = None
     location_name: Optional[str] = None  # Maps to the "State / County" UI field
+    # Defendants linked to the matched case (used to populate the dropdown)
+    defendants: List[str] = []

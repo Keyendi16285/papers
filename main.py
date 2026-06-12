@@ -83,6 +83,66 @@ async def read_dates():
 async def read_travel():
     return FileResponse("static/travel.html")
 
+# --- CASE TRACKER ID RESOLUTION HELPERS ---
+
+def _pick_case_defendant_ids(records: list, defendant_name: Optional[str]):
+    """
+    From Case Tracker defendant records (already filtered to a single case),
+    pick the case-level `case_id` and the `defendant_id` whose name matches the
+    given defendant. Falls back to the lone record's id for single-defendant
+    cases. Returns (case_id, defendant_id); either may be None.
+    """
+    case_id = None
+    defendant_id = None
+    target = (defendant_name or "").strip()
+    for item in records:
+        if case_id is None and item.get("case_id") is not None:
+            case_id = item.get("case_id")
+        if target and str(item.get("name", "")).strip() == target:
+            defendant_id = item.get("id")
+    # Single-defendant case: the only record is unambiguously the defendant.
+    if defendant_id is None and len(records) == 1:
+        defendant_id = records[0].get("id")
+    return case_id, defendant_id
+
+
+def _fetch_tracker_defendants_sync(case_number: Optional[str]) -> list:
+    """Synchronous Case Tracker lookup of defendants tied to an exact case number."""
+    cn = str(case_number).strip() if case_number else ""
+    if not cn:
+        return []
+    try:
+        with httpx.Client() as client:
+            resp = client.get(
+                f"{CASETRACKER_URL}/api/defendants/",
+                params={"search": cn},
+                timeout=5.0
+            )
+            if resp.status_code == 200:
+                return [it for it in resp.json() if str(it.get("case_number", "")).strip() == cn]
+    except Exception as e:
+        print(f"Case Tracker ID lookup failed for {cn}: {e}")
+    return []
+
+
+async def _fetch_tracker_defendants_async(case_number: Optional[str]) -> list:
+    """Async Case Tracker lookup of defendants tied to an exact case number."""
+    cn = str(case_number).strip() if case_number else ""
+    if not cn:
+        return []
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{CASETRACKER_URL}/api/defendants/",
+                params={"search": cn},
+                timeout=5.0
+            )
+            if resp.status_code == 200:
+                return [it for it in resp.json() if str(it.get("case_number", "")).strip() == cn]
+    except Exception as e:
+        print(f"Case Tracker ID lookup failed for {cn}: {e}")
+    return []
+
 # --- API ROUTES ---
 
 @app.post("/api/papers", response_model=Paper)
@@ -384,40 +444,58 @@ async def get_single_date_details(date_id: int, db: Session = Depends(get_sessio
 
 @app.get("/api/papers/dates/{date_id}/tracker-check", response_model=TrackerMatchResponse)
 async def check_case_tracker_match(date_id: int, db: Session = Depends(get_session)):
+    """
+    Matches the paper's case number against the case-entries table.
+
+    On a match we auto-populate the case name and the State / County location,
+    and surface the list of defendants linked to that case (pulled from Case
+    Tracker) so the edit modal can render them as a dropdown. With no match the
+    response signals the frontend to keep every field as free-form input.
+    """
     # 1. Locate the active date/event record
     db_date = db.get(PaperDate, date_id)
     if not db_date:
-        raise HTTPException(status_with_code=404, detail="Target date record not found")
-        
+        raise HTTPException(status_code=404, detail="Target date record not found")
+
     # 2. Extract the parent record reference to acquire tracking criteria
     parent_paper = db.get(Paper, db_date.paper_id)
     if not parent_paper:
         raise HTTPException(status_code=404, detail="Associated parent paper file not found")
-    
-    # Extract identifiers (checking fallback parameters: case_id or case_number)
-    case_number_query = getattr(parent_paper, "case_name", None)
-    case_id_query = getattr(parent_paper, "case_id", None)
-    
-    tracker_record = None
-    
-    # 3. Query the casetracker table explicitly using unique identifiers
-    if case_id_query:
-        tracker_record = db.exec(CaseEntry).filter(CaseEntry.id == case_id_query).first()
-    
-    if not tracker_record and case_number_query:
-        tracker_record = db.exec(CaseEntry).filter(CaseEntry.case_number == case_number_query).first()
-        
-    # 4. Evaluate findings and respond with clean mapping data parameters
-    if tracker_record:
-        return TrackerMatchResponse(
-            matched=True,
-            case_name=getattr(tracker_record, "case_name", None) or getattr(tracker_record, "case_title", ""),
-            defendant_name=getattr(tracker_record, "defendant_name", ""),
-            location_name=getattr(tracker_record, "location_name", "")  # Corresponds to "State / County"
-        )
-        
-    # Fallback response state if no identifiers provide an explicit production record match
-    return TrackerMatchResponse(matched=False)    
+
+    # Paper.case_name stores the case number (e.g. "2026CH3") -- our match key.
+    case_number = (parent_paper.case_name or "").strip()
+    if not case_number:
+        return TrackerMatchResponse(matched=False)
+
+    # 3. Match against the case-entries table by case number
+    case_entry = db.exec(
+        select(CaseEntry).where(CaseEntry.case_number == case_number)
+    ).first()
+
+    if not case_entry:
+        return TrackerMatchResponse(matched=False)
+
+    # Build the "State / County" label from the matched case entry
+    st = (case_entry.state or "").strip()
+    co = (case_entry.county or "").strip()
+    if st and co:
+        location_name = f"{st} / {co}"
+    else:
+        location_name = st or co or None
+
+    # 4. Pull the defendants linked to this case from Case Tracker
+    defendants: List[str] = []
+    for item in await _fetch_tracker_defendants_async(case_number):
+        name = item.get("name")
+        if name and name not in defendants:
+            defendants.append(name)
+
+    return TrackerMatchResponse(
+        matched=True,
+        case_name=case_entry.case_name,
+        location_name=location_name,  # "State / County"
+        defendants=defendants
+    )
     
 @app.patch("/api/papers/dates/{date_id}", response_model=PaperDate)
 async def update_paper_date(
@@ -488,10 +566,32 @@ async def read_review():
 
 @app.get("/api/review/suggestions")
 async def get_review_suggestions(status: str = "pending", db: Session = Depends(get_db)):
-    # 1. Fetch only 'pending' items from the staging table
+    # 1. Fetch only items matching the requested status from the staging table
     query = select(PaperReview).where(PaperReview.status == status)
     items = db.exec(query).all()
-    
+
+    # 1b. Resolve missing Case Tracker IDs (once per case number) and persist
+    #     them onto the review rows so approval is just a copy. The rows are
+    #     session-managed, so assignments are tracked without an explicit add().
+    tracker_cache: dict = {}
+    ids_mutated = False
+    for item in items:
+        if item.case_id is not None and item.defendant_id is not None:
+            continue
+        if item.case_number not in tracker_cache:
+            tracker_cache[item.case_number] = await _fetch_tracker_defendants_async(item.case_number)
+        case_id, defendant_id = _pick_case_defendant_ids(
+            tracker_cache[item.case_number], item.defendant_name
+        )
+        if item.case_id is None and case_id is not None:
+            item.case_id = case_id
+            ids_mutated = True
+        if item.defendant_id is None and defendant_id is not None:
+            item.defendant_id = defendant_id
+            ids_mutated = True
+    if ids_mutated:
+        db.commit()
+
     # 2. Group them by case_number
     suggestions = {}
     for item in items:
@@ -533,14 +633,33 @@ class ApprovalRequest(BaseModel):
 
 @app.post("/api/review/approve")
 async def approve_reviews(data: ApprovalRequest, db: Session = Depends(get_session)):
+    # Cache Case Tracker lookups so multiple events on the same case hit the API once
+    tracker_cache: dict = {}
+
     for rid in data.review_ids:
         review_item = db.get(PaperReview, rid)
         if not review_item:
             continue
-            
+
+        # Prefer the IDs already resolved on the review row (set on display);
+        # fall back to a live Case Tracker lookup only when they're still missing.
+        case_id = review_item.case_id
+        defendant_id = review_item.defendant_id
+        if case_id is None or defendant_id is None:
+            case_number = review_item.case_number
+            if case_number not in tracker_cache:
+                tracker_cache[case_number] = await _fetch_tracker_defendants_async(case_number)
+            fb_case_id, fb_defendant_id = _pick_case_defendant_ids(
+                tracker_cache[case_number], review_item.defendant_name
+            )
+            if case_id is None:
+                case_id = fb_case_id
+            if defendant_id is None:
+                defendant_id = fb_defendant_id
+
         # Check if production paper exists
         paper = db.exec(select(Paper).where(Paper.case_name == review_item.case_number)).first()
-        
+
         if not paper:
             paper = Paper(
                 case_name=review_item.case_number,
@@ -548,11 +667,19 @@ async def approve_reviews(data: ApprovalRequest, db: Session = Depends(get_sessi
                 defendant_name=review_item.defendant_name,
                 source_review_id=review_item.id,
                 location_name= f"{review_item.state if review_item.state else ''} / {review_item.county if review_item.county else ''}",
-                
+                case_id=case_id,
+                defendant_id=defendant_id,
             )
             db.add(paper)
-            db.commit() 
+            db.commit()
             db.refresh(paper)
+        else:
+            # Backfill IDs onto an existing case paper when they are missing
+            if paper.case_id is None and case_id is not None:
+                paper.case_id = case_id
+            if paper.defendant_id is None and defendant_id is not None:
+                paper.defendant_id = defendant_id
+            db.add(paper)
 
         new_date = PaperDate(
             paper_id=paper.id,
@@ -678,50 +805,60 @@ def sync_historical_papers(db: Session):
     Background worker function that finds historical papers with missing 
     metadata fields and populates them using data from paper_review.
     """
-    # 1. Fetch papers that have placeholder or null indicators
+    # 1. Fetch papers that have placeholder or null indicators, including those
+    #    missing the Case Tracker case_id / defendant_id references.
     # Adapt filters if your database uses empty strings "" instead of None/Null
     statement = select(Paper).where(
-        (Paper.case_title == None) | (Paper.case_title == "N/A") | 
-        (Paper.location_name == None) | (Paper.location_name == "Unknown")
+        (Paper.case_title == None) | (Paper.case_title == "N/A") |
+        (Paper.location_name == None) | (Paper.location_name == "Unknown") |
+        (Paper.case_id == None) | (Paper.defendant_id == None)
     )
     historical_papers = db.exec(statement).all()
-    
+
     updated_count = 0
-    
+
     for paper in historical_papers:
-        # Check if we have a valid reference to the source review table
-        if not getattr(paper, "source_review_id", None):
-            continue
-            
-        # 2. Find the corresponding row in paper_review
-        review_item = db.get(PaperReview, paper.source_review_id)
-        if not review_item:
-            continue
-            
-        # 3. Synchronize missing values down to the paper entry
+        # 2. Synchronize missing values down to the paper entry
         is_mutated = False
-        
-        if not paper.case_title or paper.case_title == "N/A":
-            paper.case_title = review_item.case_name
-            is_mutated = True
-            
-        # Construct location format to match your new implementation pattern
-        formatted_location = f"{review_item.state if review_item.state else ''} / {review_item.county if review_item.county else ''}".strip(" / ")
-        if not formatted_location:
-            formatted_location = "Unknown"
-            
-        if not paper.location_name or paper.location_name == "Unknown":
-            paper.location_name = formatted_location
-            is_mutated = True
-            
+
+        # 2a. Metadata backfill from paper_review (requires a source review link)
+        review_item = None
+        if getattr(paper, "source_review_id", None):
+            review_item = db.get(PaperReview, paper.source_review_id)
+
+        if review_item:
+            if not paper.case_title or paper.case_title == "N/A":
+                paper.case_title = review_item.case_name
+                is_mutated = True
+
+            # Construct location format to match your new implementation pattern
+            formatted_location = f"{review_item.state if review_item.state else ''} / {review_item.county if review_item.county else ''}".strip(" / ")
+            if not formatted_location:
+                formatted_location = "Unknown"
+
+            if not paper.location_name or paper.location_name == "Unknown":
+                paper.location_name = formatted_location
+                is_mutated = True
+
+        # 2b. ID backfill from Case Tracker (matched by case number / defendant name)
+        if paper.case_id is None or paper.defendant_id is None:
+            records = _fetch_tracker_defendants_sync(paper.case_name)
+            case_id, defendant_id = _pick_case_defendant_ids(records, paper.defendant_name)
+            if paper.case_id is None and case_id is not None:
+                paper.case_id = case_id
+                is_mutated = True
+            if paper.defendant_id is None and defendant_id is not None:
+                paper.defendant_id = defendant_id
+                is_mutated = True
+
         if is_mutated:
             db.add(paper)
             updated_count += 1
-            
-    # 4. Commit all structural changes to the database
+
+    # 3. Commit all structural changes to the database
     if updated_count > 0:
         db.commit()
-    
+
     print(f"Successfully synchronized {updated_count} historical paper records.")
 
 

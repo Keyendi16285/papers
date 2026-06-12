@@ -324,7 +324,7 @@ async function openEditModal(dateId) {
         safeSetInputValue('edit-location-name', paperContext.location_name);
         safeSetInputValue('edit-paper-type', paperContext.type);
         safeSetInputValue('edit-description', paperContext.description);
-        
+
         // 3. Reveal the Modal View Component CSS Interface
         const modalContainer = document.getElementById('edit-date-modal');
         if (modalContainer) {
@@ -334,8 +334,101 @@ async function openEditModal(dateId) {
             console.error('[DOM Error]: Main modal container element "#edit-date-modal" is missing!');
         }
 
+        // 4. Match the case number against case-entries to auto-populate fields
+        //    and switch the defendant field to a dropdown of linked defendants.
+        applyCaseMatch(dateId);
+
     } catch (error) {
         console.error("Operational failure opening modal intercept context:", error);
+    }
+}
+
+/**
+ * Reveals the free-form defendant text input (used when no case match exists).
+ */
+function setDefendantFreeform() {
+    document.getElementById('edit-defendant-name')?.classList.remove('hidden');
+    document.getElementById('edit-defendant-name-select')?.classList.add('hidden');
+}
+
+/**
+ * Reveals the defendant dropdown (used when a matching case supplies defendants).
+ */
+function setDefendantDropdown() {
+    document.getElementById('edit-defendant-name')?.classList.add('hidden');
+    document.getElementById('edit-defendant-name-select')?.classList.remove('hidden');
+}
+
+function escapeHtml(str) {
+    return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+/**
+ * Updates the small "Case Matched / No Case Match" badge in the modal.
+ */
+function setMatchIndicator(matched) {
+    const indicator = document.getElementById('edit-match-indicator');
+    if (!indicator) return;
+    indicator.classList.remove('hidden');
+    if (matched) {
+        indicator.textContent = 'Case Matched';
+        indicator.className = 'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700';
+    } else {
+        indicator.textContent = 'No Case Match';
+        indicator.className = 'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-500';
+    }
+}
+
+/**
+ * Checks the parent paper's case number against the case-entries table.
+ * On a match: auto-populates Case Name + State/County and renders the linked
+ * defendants as a dropdown. With no match: every field stays free-form.
+ */
+async function applyCaseMatch(dateId) {
+    const input = document.getElementById('edit-defendant-name');
+    const select = document.getElementById('edit-defendant-name-select');
+
+    // Default to the free-form state until the lookup confirms a match
+    setDefendantFreeform();
+    document.getElementById('edit-match-indicator')?.classList.add('hidden');
+
+    try {
+        const response = await authFetch(`/api/papers/dates/${dateId}/tracker-check`);
+        if (!response.ok) return;
+
+        const match = await response.json();
+
+        if (!match || !match.matched) {
+            // No matching case -> leave fields blank/free-form as-is
+            setMatchIndicator(false);
+            return;
+        }
+
+        // Matched: auto-populate the authoritative case fields
+        if (match.case_name) safeSetInputValue('edit-case-name', match.case_name);
+        if (match.location_name) safeSetInputValue('edit-location-name', match.location_name);
+
+        // Build the defendant dropdown from the case's linked defendants,
+        // preserving any previously saved value that isn't in the list.
+        const current = input ? input.value : '';
+        const names = Array.isArray(match.defendants) ? match.defendants.slice() : [];
+        if (current && !names.includes(current)) names.unshift(current);
+
+        if (names.length > 0 && select) {
+            select.innerHTML = names
+                .map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`)
+                .join('');
+            if (current && names.includes(current)) select.value = current;
+            setDefendantDropdown();
+        }
+
+        setMatchIndicator(true);
+    } catch (err) {
+        console.error('Case match lookup failed:', err);
     }
 }
 
@@ -358,12 +451,19 @@ async function handleFormSubmit(e) {
     e.preventDefault();
     const id = document.getElementById('edit-date-id').value;
 
+    // Read the defendant from whichever field is active: the matched-case
+    // dropdown when visible, otherwise the free-form text input.
+    const defSelect = document.getElementById('edit-defendant-name-select');
+    const defendantName = (defSelect && !defSelect.classList.contains('hidden'))
+        ? defSelect.value
+        : document.getElementById('edit-defendant-name').value;
+
     const payload = {
         date: document.getElementById('edit-date-value').value,
         party: document.getElementById('edit-party').value,
         optional_text: document.getElementById('edit-optional-text').value,
         court_type: document.getElementById('edit-court-type').value,
-        defendant_name: document.getElementById('edit-defendant-name').value,
+        defendant_name: defendantName,
         case_title: document.getElementById('edit-case-name').value,
         type: document.getElementById('edit-paper-type').value,
         description: document.getElementById('edit-description').value,
