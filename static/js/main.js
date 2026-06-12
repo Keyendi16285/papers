@@ -15,39 +15,11 @@ window.currentCaseTitle = null;      // Stores Case Title (e.g., Multiple Def v.
 window.currentDefendantBaseName = null;
 window.totalDefendantsInCase = 1;
 
-// 1. AUTH FETCH HELPER
-async function authFetch(url, options = {}) {
-    const token = sessionStorage.getItem("access_token") || localStorage.getItem("access_token");
-    options.headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
-    const response = await fetch(url, options);
-    if (response.status === 401) {
-        sessionStorage.removeItem("access_token");
-        localStorage.removeItem("access_token");
-        window.location.replace(window.location.origin);
-    }
-    return response;
-}
+// Auth (SSO gate, token handshake, authFetch, handleLogout) lives in auth.js,
+// which every page loads before this script.
 
 document.addEventListener('DOMContentLoaded', () => {
-    // SSO Handshake
     const urlParams = new URLSearchParams(window.location.search);
-    const tokenFromUrl = urlParams.get('token');
-    if (tokenFromUrl) {
-        sessionStorage.setItem("access_token", tokenFromUrl);
-        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-        window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
-    }
-
-    // Auth Check
-    (function verifyAccess() {
-        const token = sessionStorage.getItem("access_token") || localStorage.getItem("access_token");
-        if (!token) {
-            const currentUrl = window.location.origin;
-            const loginUrl = `https://casetracker.massfoia.com/login?redirect_url=${encodeURIComponent(currentUrl)}`;
-            window.location.replace(loginUrl);
-            throw new Error("Redirecting to login...");
-        }
-    })();
 
     fetchPapers();
     addDateRow();
@@ -440,10 +412,7 @@ async function editPaper(id) {
         document.querySelector('#paper-form button[type=\"submit\"]').innerHTML = 'Save Filing & Dates';
     }
 
-    function handleLogout() {
-        sessionStorage.clear();
-        window.location.replace("https://casetracker.massfoia.com/logout?next=login");
-    }
+    // handleLogout lives in auth.js (shared across all pages).
 
     window.filterDashboard = (filter) => {
         const query = document.getElementById('paper-search-input')?.value || '';
