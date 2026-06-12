@@ -7,17 +7,7 @@ let cachedDates = [];
 let currentGroupingMode = 'default'; // 'default', 'case', 'defendant'
 let activeDatesRegistry = {};
 
-async function authFetch(url, options = {}) {
-    const token = sessionStorage.getItem("access_token") || localStorage.getItem("access_token");
-    options.headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
-    const response = await fetch(url, options);
-    if (response.status === 401) {
-        sessionStorage.removeItem("access_token");
-        localStorage.removeItem("access_token");
-        window.location.replace(window.location.origin);
-    }
-    return response;
-}
+// authFetch + the SSO auth gate live in auth.js, loaded before this script.
 
 document.addEventListener('DOMContentLoaded', () => {
     const deadlineSearch = document.getElementById('paper-search-input');
