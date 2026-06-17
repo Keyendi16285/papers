@@ -575,7 +575,7 @@ async function editPaper(id) {
         if (!confirm(`Are you sure you want to migrate these ${reviewIds.length} items to production?`)) return;
 
         try {
-            const response = await fetch('/api/review/approve', {
+            const response = await authFetch('/api/review/approve', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -600,7 +600,7 @@ async function editPaper(id) {
         if (!confirm('Approve this specific date?')) return;
 
         try {
-            const response = await fetch('/api/review/approve', {
+            const response = await authFetch('/api/review/approve', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ review_ids: [reviewId] }) // Send as a list with one ID

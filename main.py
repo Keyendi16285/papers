@@ -146,7 +146,7 @@ async def _fetch_tracker_defendants_async(case_number: Optional[str]) -> list:
 # --- API ROUTES ---
 
 @app.post("/api/papers", response_model=Paper)
-async def create_paper(payload: PaperCreate, session: Session = Depends(get_session)):
+async def create_paper(payload: PaperCreate, session: Session = Depends(get_session), user = Depends(get_current_user)):
     """
     Creates a Paper and all its associated dates in one transaction.
     """
@@ -180,7 +180,7 @@ async def create_paper(payload: PaperCreate, session: Session = Depends(get_sess
     return new_paper
 
 @app.get("/api/papers", response_model=List[PaperRead])
-async def list_papers(filter: str = "upcoming", q: str = None, session: Session = Depends(get_session)):
+async def list_papers(filter: str = "upcoming", q: str = None, session: Session = Depends(get_session), user = Depends(get_current_user)):
     now = datetime.now()
     
     # Base query: Always use selectinload to ensure dates are included in the JSON
@@ -275,7 +275,7 @@ async def get_paper(paper_id: int, session: Session = Depends(get_session), user
     return paper
 
 @app.get("/api/search/targets")
-async def search_targets(q: str):
+async def search_targets(q: str, user = Depends(get_current_user)):
     CASETRACKER_URL = os.getenv("CASETRACKER_URL", "http://host.docker.internal:8001")
     
     async with httpx.AsyncClient() as client:
@@ -366,7 +366,7 @@ async def update_paper(
     return db_paper
 
 @app.get("/api/papers/dates/upcoming", response_model=List[PaperDateReadWithPaper])
-async def get_upcoming_dates(session: Session = Depends(get_session)):
+async def get_upcoming_dates(session: Session = Depends(get_session), user = Depends(get_current_user)):
     # 1. Fetch upcoming dates
     statement = (
         select(PaperDate)
@@ -416,7 +416,7 @@ async def get_upcoming_dates(session: Session = Depends(get_session)):
     return dates
 
 @app.get("/api/papers/dates/{date_id}")
-async def get_single_date_details(date_id: int, db: Session = Depends(get_session)):
+async def get_single_date_details(date_id: int, db: Session = Depends(get_session), user = Depends(get_current_user)):
     # Fetch the explicit date record
     db_date = db.get(PaperDate, date_id)
     if not db_date:
@@ -443,7 +443,7 @@ async def get_single_date_details(date_id: int, db: Session = Depends(get_sessio
     }
 
 @app.get("/api/papers/dates/{date_id}/tracker-check", response_model=TrackerMatchResponse)
-async def check_case_tracker_match(date_id: int, db: Session = Depends(get_session)):
+async def check_case_tracker_match(date_id: int, db: Session = Depends(get_session), user = Depends(get_current_user)):
     """
     Matches the paper's case number against the case-entries table.
 
@@ -501,7 +501,8 @@ async def check_case_tracker_match(date_id: int, db: Session = Depends(get_sessi
 async def update_paper_date(
     date_id: int,
     update_data: PaperDateUpdate,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_session),
+    user = Depends(get_current_user)
 ):
     """
     Updates a specific upcoming date execution item, while safely synchronizing
@@ -565,7 +566,7 @@ async def read_review():
         return f.read()
 
 @app.get("/api/review/suggestions")
-async def get_review_suggestions(status: str = "pending", db: Session = Depends(get_db)):
+async def get_review_suggestions(status: str = "pending", db: Session = Depends(get_db), user = Depends(get_current_user)):
     # 1. Fetch only items matching the requested status from the staging table
     query = select(PaperReview).where(PaperReview.status == status)
     items = db.exec(query).all()
@@ -632,7 +633,7 @@ class ApprovalRequest(BaseModel):
     review_ids: List[int]
 
 @app.post("/api/review/approve")
-async def approve_reviews(data: ApprovalRequest, db: Session = Depends(get_session)):
+async def approve_reviews(data: ApprovalRequest, db: Session = Depends(get_session), user = Depends(get_current_user)):
     # Cache Case Tracker lookups so multiple events on the same case hit the API once
     tracker_cache: dict = {}
 
@@ -699,7 +700,7 @@ async def approve_reviews(data: ApprovalRequest, db: Session = Depends(get_sessi
     return {"status": "success", "message": f"Approved {len(data.review_ids)} items"}
 
 @app.post("/api/review/reject")
-async def reject_reviews(data: ApprovalRequest, db: Session = Depends(get_session)):
+async def reject_reviews(data: ApprovalRequest, db: Session = Depends(get_session), user = Depends(get_current_user)):
     rejected_count = 0
     
     for rid in data.review_ids:
@@ -717,7 +718,7 @@ async def reject_reviews(data: ApprovalRequest, db: Session = Depends(get_sessio
     return {"status": "success", "message": f"Archived/Rejected {rejected_count} items"}
 
 @app.post("/api/review/unarchive")
-async def unarchive_reviews(data: ApprovalRequest, db: Session = Depends(get_session)):
+async def unarchive_reviews(data: ApprovalRequest, db: Session = Depends(get_session), user = Depends(get_current_user)):
     unarchived_count = 0
     
     for rid in data.review_ids:
@@ -739,7 +740,7 @@ import logging
 logger = logging.getLogger("uvicorn.error")
 
 @app.get("/api/travel")
-async def get_travel_docket(q: Optional[str] = None, db: Session = Depends(get_session)):
+async def get_travel_docket(q: Optional[str] = None, db: Session = Depends(get_session), user = Depends(get_current_user)):
     """
     Fetches only UPCOMING 'In-person' court events, sorted chronologically
     from nearest to farthest date, and maps them to their parent case profiles.
@@ -863,7 +864,7 @@ def sync_historical_papers(db: Session):
 
 
 @app.post("/api/admin/maintenance/backfill-metadata")
-async def trigger_metadata_backfill(background_tasks: BackgroundTasks, db: Session = Depends(get_session)):
+async def trigger_metadata_backfill(background_tasks: BackgroundTasks, db: Session = Depends(get_session), user = Depends(get_current_user)):
     """
     Triggers an asynchronous background process to fix missing 
     case names and locations for historical papers.
