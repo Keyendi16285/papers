@@ -252,9 +252,7 @@ async function handleFormSubmit(e) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // ... existing initialization (Auth Check, etc.) ...
-
-    // NEW: Listener for the Dashboard Table Search
+    // Dashboard table search
     const tableSearchInput = document.getElementById('paper-search-input');
     if (tableSearchInput) {
         tableSearchInput.addEventListener('input', (e) => {
@@ -296,18 +294,11 @@ async function fetchPapers(filter = 'upcoming', searchQuery = '') {
             const nearestDate = p.dates?.sort((a, b) => new Date(a.date) - new Date(b.date))[0];
             const casewideBadge = p.is_casewide ? `<span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-black bg-amber-100 text-amber-700 border border-amber-200 uppercase tracking-tighter"><i class="fa-solid fa-users-line mr-1"></i> Casewide</span>` : '';
 
-            // const linkIcon = nearestDate?.event_link ? `
-            //     <a href="${nearestDate.event_link}" target="_blank" class="ml-1 text-blue-500 hover:text-blue-700 transition-colors" title="View Order">
-            //         <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-            //     </a>
-            // ` : '';
-
             const parsedContextHtml = (() => {
                 const sourceLink = nearestDate?.source_link || p.source_link || '';
                 const eventLink = nearestDate?.event_link || p.event_link || '';
 
                 let filingReplacement = 'Filing';
-                console.log(`sourceLink: ${sourceLink}`);
                 if (sourceLink) {
                     filingReplacement = `<a href="${sourceLink}" target="_blank" class="text-blue-500 hover:underline inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>Filing</a>`;
                 }

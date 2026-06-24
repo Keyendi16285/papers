@@ -246,19 +246,6 @@
         </div>
     </div>
 
-    <script>
-        // Inline helper to toggle court type field in the modal
-        function toggleEditCourtType() {
-            const party = document.getElementById('edit-party').value;
-            const container = document.getElementById('edit-court-type-container');
-            if (party.includes('Court')) {
-                container.classList.remove('hidden');
-            } else {
-                container.classList.add('hidden');
-                document.getElementById('edit-court-type').value = "";
-            }
-        }
-    </script>
     <script src="/static/js/auth.js"></script>
     <script src="/static/js/dates.js"></script>
 </body>

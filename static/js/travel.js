@@ -32,12 +32,11 @@ async function loadTravelDocket(searchQuery = '') {
         let url = '/api/travel';
         if (searchQuery) url += `?q=${encodeURIComponent(searchQuery)}`;
 
-        // Uses the globally available authFetch wrapper from main.js
+        // Uses the globally available authFetch wrapper from auth.js
         const response = await authFetch(url);
         if (!response.ok) throw new Error("Failed to load travel itineraries.");
 
         cachedTravelPapers = await response.json();
-        console.log("Fetched travel papers:", cachedTravelPapers);
         if (!Array.isArray(cachedTravelPapers)) {
             cachedTravelPapers = [];
         }
@@ -135,7 +134,6 @@ function buildTravelRowHtml(paper) {
         const eventLink = paper.dates?.event_link || paper.event_link || '';
 
         let filingReplacement = 'Filing';
-        console.log(`sourceLink: ${sourceLink}`);
         if (sourceLink) {
             filingReplacement = `<a href="${sourceLink}" target="_blank" class="text-blue-500 hover:underline inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>Filing</a>`;
         }

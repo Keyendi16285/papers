@@ -1,12 +1,12 @@
-from fastapi import BackgroundTasks, FastAPI, Depends, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, Depends, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from sqlmodel import Session, select, or_, and_, SQLModel, Field, Relationship
+from sqlmodel import Session, select, or_
 from typing import List, Optional
 from datetime import datetime
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import selectinload
 from sqlalchemy import asc
@@ -18,11 +18,9 @@ from models import CaseEntry, Paper, PaperDate, PaperCreate, DateEntry, PaperDat
 
 CASETRACKER_URL = os.getenv("CASETRACKER_URL", "http://host.docker.internal:8001")
 
-# auth_scheme = HTTPBearer()
-
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token") # Points to Case Tracker login if needed
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
@@ -58,10 +56,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-class ReviewApprovalRequest(BaseModel):
-    case_number: str
-    review_ids: List[int]
 
 # 1. Initialize Database on Startup
 @app.on_event("startup")
@@ -747,8 +741,7 @@ async def get_travel_docket(q: Optional[str] = None, db: Session = Depends(get_s
     """
     try:
         current_time = datetime.now()
-        print(f"DEBUG: Fetching travel docket with search query: '{q}' at {current_time.isoformat()}")
-        
+
         # 1. Base Query: Filter for 'In-Person' AND only look at future dates
         # 2. Sorting Logic: Order by date from nearest to farthest (ASC)
         query = (
@@ -766,7 +759,6 @@ async def get_travel_docket(q: Optional[str] = None, db: Session = Depends(get_s
             )
             
         date_records = db.exec(query).all()
-        print(f"DEBUG: Retrieved {len(date_records)} 'In-Person' events from the database.")
         results = []
         
         for d_record in date_records:
