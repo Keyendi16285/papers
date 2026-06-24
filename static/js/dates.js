@@ -55,11 +55,9 @@ async function fetchAllDates(searchQuery = '') {
         // 3. Intercept the redirection state from localStorage cleanly
         const pendingId = localStorage.getItem('pendingEditDateId');
         if (pendingId) {
-            console.log(`[Redirect Handshake] Detected pending edit target ID: ${pendingId}`);
-            
             // Remove the key immediately so it doesn't reopen on a manual page refresh
             localStorage.removeItem('pendingEditDateId');
-            
+
             // Trigger the modal directly since the DOM elements and cache registry are built
             if (typeof openEditModal === 'function') {
                 openEditModal(parseInt(pendingId, 10));
@@ -179,7 +177,6 @@ function buildTableRowHtml(d) {
         const eventLink = d.event_link || d.paper?.event_link || '';
 
         let filingReplacement = 'Filing';
-        console.log(`sourceLink: ${sourceLink}`);
         if (sourceLink) {
             filingReplacement = `<a href="${sourceLink}" target="_blank" class="text-blue-500 hover:underline inline-flex items-center gap-0.5"><i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>Filing</a>`;
         }
@@ -234,25 +231,6 @@ function buildTableRowHtml(d) {
     `;
 }
 
-async function checkRedirectedEditContext() {
-    const pendingId = localStorage.getItem('pendingEditDateId');
-    if (pendingId) {
-        console.log(`Detected redirected edit context for Date ID: ${pendingId}`);
-        
-        // Clean up localStorage immediately so it doesn't reopen on a manual refresh
-        localStorage.removeItem('pendingEditDateId');
-        
-        // Give the UI a brief moment to ensure records are painted, then trigger the modal
-        setTimeout(() => {
-            if (typeof openEditModal === 'function') {
-                openEditModal(parseInt(pendingId));
-            } else {
-                console.error("openEditModal function is not accessible in current scope.");
-            }
-        }, 200);
-    }
-}
-
 /**
  * Invoked Directly via Inline onclick triggers from filters
  */
@@ -287,8 +265,6 @@ function safeSetInputValue(elementId, value) {
 
 async function openEditModal(dateId) {
     try {
-        console.log(`[Edit Modal Initiated]: Fetching context for Date ID: ${dateId}`);
-        
         // Fetch target record configuration data from your FastAPI backend
         const response = await authFetch(`/api/papers/dates/${dateId}`);
         if (!response.ok) {
