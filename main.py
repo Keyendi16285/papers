@@ -9,7 +9,7 @@ from datetime import datetime
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import selectinload
-from sqlalchemy import asc
+from sqlalchemy import asc, func
 import os
 import httpx
 
@@ -173,6 +173,17 @@ async def create_paper(payload: PaperCreate, session: Session = Depends(get_sess
     session.refresh(new_paper)
     return new_paper
 
+def _tst_case_numbers(session):
+    """Case numbers of TST (test) cases, used to hide them from default views."""
+    rows = session.exec(
+        select(CaseEntry.case_number).where(
+            func.upper(func.trim(func.coalesce(CaseEntry.case_class, ""))) == "TST",
+            CaseEntry.case_number != None,
+        )
+    ).all()
+    return set(rows)
+
+
 @app.get("/api/papers", response_model=List[PaperRead])
 async def list_papers(filter: str = "upcoming", q: str = None, session: Session = Depends(get_session), user = Depends(get_current_user)):
     now = datetime.now()
@@ -199,6 +210,9 @@ async def list_papers(filter: str = "upcoming", q: str = None, session: Session 
 
     # results.all() will now contain the papers AND their nested dates array
     results = session.exec(statement).all()
+    if not q:
+        tst = _tst_case_numbers(session)
+        results = [r for r in results if r.case_name not in tst]
     return results
 
 @app.get("/api/dates", response_model=List[PaperDateReadWithPaper])
@@ -222,6 +236,9 @@ async def list_all_dates(
         )
         
     dates = session.exec(statement).all()
+    if not q:
+        tst = _tst_case_numbers(session)
+        dates = [d for d in dates if not (d.paper and d.paper.case_name in tst)]
 
     async with httpx.AsyncClient() as client:
         for d in dates:
@@ -369,6 +386,8 @@ async def get_upcoming_dates(session: Session = Depends(get_session), user = Dep
         .options(selectinload(PaperDate.paper))
     )
     dates = session.exec(statement).all()
+    tst = _tst_case_numbers(session)
+    dates = [d for d in dates if not (d.paper and d.paper.case_name in tst)]
 
     # 2. Perform external lookup for State/County (Added logic)
     async with httpx.AsyncClient() as client:
@@ -759,6 +778,9 @@ async def get_travel_docket(q: Optional[str] = None, db: Session = Depends(get_s
             )
             
         date_records = db.exec(query).all()
+        if not q:
+            tst = _tst_case_numbers(db)
+            date_records = [d for d in date_records if not (getattr(d, 'paper', None) and d.paper.case_name in tst)]
         results = []
         
         for d_record in date_records:
